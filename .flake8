@@ -1,0 +1,11 @@
+[flake8]
+max-line-length = 121
+extend-ignore = E203
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    alembic/versions,
+    .pytest_cache,
+    .mypy_cache
