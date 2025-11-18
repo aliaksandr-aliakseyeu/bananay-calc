@@ -35,6 +35,7 @@ docker-compose.yml
 
 # Documentation
 *.md
+!PROJECT_OVERVIEW.md
 docs/
 
 # Excel files
