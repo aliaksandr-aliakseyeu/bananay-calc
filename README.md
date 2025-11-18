@@ -164,9 +164,6 @@ poetry run pytest
 ## 📚 Документация
 
 - [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) - полная документация проекта
-- [API_QUICKSTART.md](API_QUICKSTART.md) - быстрый старт с API
-- [CALCULATOR_API.md](CALCULATOR_API.md) - описание калькулятора
-- [YANDEX_API_INFO.md](YANDEX_API_INFO.md) - информация о Yandex API
 
 ---
 
