@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class RegionPricing(Base):
-    """Тарифы и параметры расчета для региона."""
+    """Pricing and calculation parameters for region."""
 
     __tablename__ = "region_pricing"
 
@@ -22,90 +22,74 @@ class RegionPricing(Base):
     region_id: Mapped[int] = mapped_column(
         ForeignKey("regions.id"), unique=True, nullable=False, index=True
     )
-
-    # === ВОДИТЕЛЬ ===
     driver_hourly_rate: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False,
-        comment="Стоимость 1 часа работы водителя, руб."
+        comment="Driver hourly rate, RUB"
     )
     planned_work_hours: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False,
-        comment="Часов на выполнение работы по плану"
+        comment="Planned working hours"
     )
-
-    # === ТРАНСПОРТ ===
     fuel_price_per_liter: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False,
-        comment="Стоимость бензина, руб/л"
+        comment="Fuel price, RUB/L"
     )
     fuel_consumption_per_100km: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False,
-        comment="Расход бензина, л/100км"
+        comment="Fuel consumption, L/100km"
     )
     depreciation_coefficient: Mapped[Decimal] = mapped_column(
         Numeric(10, 4), nullable=False,
-        comment="Коэффициент амортизации авто"
+        comment="Vehicle depreciation coefficient"
     )
-
-    # === РАСПРЕДЕЛИТЕЛЬНЫЙ ЦЕНТР ===
     warehouse_processing_per_kg: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False,
-        comment="Стоимость обработки 1 кг на РЦ, руб."
+        comment="Warehouse processing cost per kg, RUB"
     )
     service_fee_per_kg: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False,
-        comment="Сервисный сбор 1 кг (выручка компании), руб."
+        comment="Service fee per kg (company revenue), RUB"
     )
-
-    # === АДРЕСНАЯ ДОСТАВКА ===
     delivery_point_cost: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False,
-        comment="Стоимость одной точки доставки, руб."
+        comment="Cost per delivery point, RUB"
     )
-
-    # === ПАРАМЕТРЫ РЕЙСА ===
     standard_trip_weight: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False,
-        comment="Стандартный вес груза в рейсе, кг"
+        comment="Standard trip cargo weight, kg"
     )
-
-    # === ЭТАЛОННАЯ КОРОБКА ===
     standard_box_length: Mapped[int] = mapped_column(
         nullable=False,
-        comment="Длина эталонной коробки, см"
+        comment="Standard box length, cm"
     )
     standard_box_width: Mapped[int] = mapped_column(
         nullable=False,
-        comment="Ширина эталонной коробки, см"
+        comment="Standard box width, cm"
     )
     standard_box_height: Mapped[int] = mapped_column(
         nullable=False,
-        comment="Высота эталонной коробки, см"
+        comment="Standard box height, cm"
     )
     standard_box_max_weight: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False,
-        comment="Максимальный вес эталонной коробки, кг"
+        comment="Standard box maximum weight, kg"
     )
-
-    # === СКИДКИ ===
     min_points_for_discount: Mapped[int] = mapped_column(
         nullable=False,
-        comment="Минимальное количество точек до применения скидки"
+        comment="Minimum points before discount applies"
     )
     discount_step_points: Mapped[int] = mapped_column(
         nullable=False,
-        comment="Шаг прироста количества точек доставки"
+        comment="Step increment for delivery points"
     )
     initial_discount_percent: Mapped[Decimal] = mapped_column(
         Numeric(5, 2), nullable=False,
-        comment="Стартовая скидка, %"
+        comment="Initial discount, %"
     )
     discount_step_percent: Mapped[Decimal] = mapped_column(
         Numeric(5, 2), nullable=False,
-        comment="Шаг прироста скидки, %"
+        comment="Discount step increment, %"
     )
-
-    # Relationships
     region: Mapped["Region"] = relationship(
         "Region", back_populates="pricing"
     )

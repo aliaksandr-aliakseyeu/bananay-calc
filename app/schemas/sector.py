@@ -31,9 +31,9 @@ class SectorResponse(BaseModel):
 
     id: int
     region_id: int
-    name: str | None = Field(None, description="Название сектора")
-    description: str | None = Field(None, description="Описание сектора")
-    boundary: GeoJSONPolygon = Field(..., description="Граница сектора в формате GeoJSON")
+    name: str | None = Field(None, description="Sector name")
+    description: str | None = Field(None, description="Sector description")
+    boundary: GeoJSONPolygon = Field(..., description="Sector boundary in GeoJSON format")
 
     model_config = ConfigDict(from_attributes=True, json_schema_extra={
         "example": {

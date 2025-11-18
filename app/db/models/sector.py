@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class Sector(Base):
-    """Сектор - кастомная область с полигоном координат, привязанная к региону."""
+    """Sector - custom area with coordinate polygon, bound to a region."""
 
     __tablename__ = "sectors"
 
@@ -24,20 +24,19 @@ class Sector(Base):
     )
     name: Mapped[str | None] = mapped_column(
         String(200), nullable=True, index=True,
-        comment="Название сектора (опционально, сектора используются в основном для расчетов)"
+        comment="Sector name (optional, sectors are mainly used for calculations)"
     )
     description: Mapped[str | None] = mapped_column(
         Text, nullable=True,
-        comment="Описание сектора"
+        comment="Sector description"
     )
 
     boundary: Mapped[str] = mapped_column(
         Geometry(geometry_type='POLYGON', srid=4326, spatial_index=True),
         nullable=False,
-        comment="Граница сектора (полигон)"
+        comment="Sector boundary (polygon)"
     )
 
-    # Relationships
     region: Mapped["Region"] = relationship(
         "Region", back_populates="sectors"
     )

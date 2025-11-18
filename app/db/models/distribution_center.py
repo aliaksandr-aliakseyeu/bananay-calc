@@ -43,7 +43,6 @@ class DistributionCenter(Base):
         comment="Активен ли РЦ"
     )
 
-    # Relationships
     region: Mapped["Region"] = relationship(
         "Region", back_populates="distribution_centers"
     )

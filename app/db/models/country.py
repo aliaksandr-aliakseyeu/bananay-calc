@@ -12,13 +12,13 @@ if TYPE_CHECKING:
 
 
 class Country(Base):
-    """Страна."""
+    """Country."""
 
     __tablename__ = "countries"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
-    code: Mapped[str] = mapped_column(String(2), unique=True, nullable=False, comment="ISO код страны")
+    code: Mapped[str] = mapped_column(String(2), unique=True, nullable=False, comment="ISO country code")
     regions: Mapped[list["Region"]] = relationship(
         "Region", back_populates="country", cascade="all, delete-orphan"
     )

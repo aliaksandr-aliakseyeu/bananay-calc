@@ -20,10 +20,10 @@ class DistributionCenterBrief(BaseModel):
 class StandardBoxInfo(BaseModel):
     """Standard box dimensions and weight."""
 
-    length: int = Field(..., description="Длина эталонной коробки, см", examples=[60])
-    width: int = Field(..., description="Ширина эталонной коробки, см", examples=[40])
-    height: int = Field(..., description="Высота эталонной коробки, см", examples=[40])
-    max_weight: Decimal = Field(..., description="Максимальный вес эталонной коробки, кг", examples=[Decimal("30.00")])
+    length: int = Field(..., description="Standard box length, cm", examples=[60])
+    width: int = Field(..., description="Standard box width, cm", examples=[40])
+    height: int = Field(..., description="Standard box height, cm", examples=[40])
+    max_weight: Decimal = Field(..., description="Standard box maximum weight, kg", examples=[Decimal("30.00")])
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
@@ -38,10 +38,10 @@ class StandardBoxInfo(BaseModel):
 class DiscountInfo(BaseModel):
     """Discount parameters."""
 
-    min_points: int = Field(..., description="Минимальное количество точек до применения скидки", examples=[100])
-    step_points: int = Field(..., description="Шаг прироста количества точек доставки", examples=[50])
-    initial_percent: Decimal = Field(..., description="Стартовая скидка, %", examples=[Decimal("5.00")])
-    step_percent: Decimal = Field(..., description="Шаг прироста скидки, %", examples=[Decimal("5.00")])
+    min_points: int = Field(..., description="Minimum points before discount applies", examples=[100])
+    step_points: int = Field(..., description="Step increment for delivery points", examples=[50])
+    initial_percent: Decimal = Field(..., description="Initial discount, %", examples=[Decimal("5.00")])
+    step_percent: Decimal = Field(..., description="Discount step increment, %", examples=[Decimal("5.00")])
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
@@ -56,48 +56,35 @@ class DiscountInfo(BaseModel):
 class RegionPricingResponse(BaseModel):
     """Region pricing information."""
 
-    # Водитель
     driver_hourly_rate: Decimal = Field(
-        ..., description="Стоимость 1 часа работы водителя, руб.", examples=[Decimal("500.00")]
+        ..., description="Driver hourly rate, RUB", examples=[Decimal("500.00")]
     )
     planned_work_hours: Decimal = Field(
-        ..., description="Часов на выполнение работы по плану", examples=[Decimal("8.00")]
+        ..., description="Planned working hours", examples=[Decimal("8.00")]
     )
-
-    # Транспорт
     fuel_price_per_liter: Decimal = Field(
-        ..., description="Стоимость бензина, руб/л", examples=[Decimal("55.00")]
+        ..., description="Fuel price, RUB/L", examples=[Decimal("55.00")]
     )
     fuel_consumption_per_100km: Decimal = Field(
-        ..., description="Расход бензина, л/100км", examples=[Decimal("12.00")]
+        ..., description="Fuel consumption, L/100km", examples=[Decimal("12.00")]
     )
     depreciation_coefficient: Decimal = Field(
-        ..., description="Коэффициент амортизации авто", examples=[Decimal("0.15")]
+        ..., description="Vehicle depreciation coefficient", examples=[Decimal("0.15")]
     )
-
-    # РЦ
     warehouse_processing_per_kg: Decimal = Field(
-        ..., description="Стоимость обработки 1 кг на РЦ, руб.", examples=[Decimal("5.00")]
+        ..., description="Warehouse processing cost per kg, RUB", examples=[Decimal("5.00")]
     )
     service_fee_per_kg: Decimal = Field(
-        ..., description="Сервисный сбор 1 кг (выручка компании), руб.",
+        ..., description="Service fee per kg (company revenue), RUB",
         examples=[Decimal("10.00")]
     )
-
-    # Адресная доставка
     delivery_point_cost: Decimal = Field(
-        ..., description="Стоимость одной точки доставки, руб.", examples=[Decimal("150.00")]
+        ..., description="Cost per delivery point, RUB", examples=[Decimal("150.00")]
     )
-
-    # Параметры рейса
     standard_trip_weight: Decimal = Field(
-        ..., description="Стандартный вес груза в рейсе, кг", examples=[Decimal("5000.00")]
+        ..., description="Standard trip cargo weight, kg", examples=[Decimal("5000.00")]
     )
-
-    # Эталонная коробка
     standard_box: StandardBoxInfo
-
-    # Скидки
     discount: DiscountInfo
 
     model_config = ConfigDict(from_attributes=True, json_schema_extra={
@@ -154,12 +141,63 @@ class RegionPricingResponse(BaseModel):
         )
 
 
+class StandardBoxInfoUpdate(BaseModel):
+    """Update schema for standard box."""
+
+    length: int | None = Field(None, gt=0, description="Standard box length, cm")
+    width: int | None = Field(None, gt=0, description="Standard box width, cm")
+    height: int | None = Field(None, gt=0, description="Standard box height, cm")
+    max_weight: Decimal | None = Field(None, gt=0, description="Standard box maximum weight, kg")
+
+
+class DiscountInfoUpdate(BaseModel):
+    """Update schema for discount parameters."""
+
+    min_points: int | None = Field(None, gt=0, description="Minimum points before discount applies")
+    step_points: int | None = Field(None, gt=0, description="Step increment for delivery points")
+    initial_percent: Decimal | None = Field(None, ge=0, le=100, description="Initial discount, %")
+    step_percent: Decimal | None = Field(None, ge=0, le=100, description="Discount step increment, %")
+
+
+class RegionPricingUpdate(BaseModel):
+    """Update schema for region pricing (all fields optional)."""
+
+    driver_hourly_rate: Decimal | None = Field(None, gt=0, description="Driver hourly rate, RUB")
+    planned_work_hours: Decimal | None = Field(None, gt=0, description="Planned working hours")
+    fuel_price_per_liter: Decimal | None = Field(None, gt=0, description="Fuel price, RUB/L")
+    fuel_consumption_per_100km: Decimal | None = Field(None, gt=0, description="Fuel consumption, L/100km")
+    depreciation_coefficient: Decimal | None = Field(None, gt=0, description="Vehicle depreciation coefficient")
+    warehouse_processing_per_kg: Decimal | None = Field(None, ge=0, description="Warehouse processing cost per kg, RUB")
+    service_fee_per_kg: Decimal | None = Field(None, ge=0, description="Service fee per kg (company revenue), RUB")
+    delivery_point_cost: Decimal | None = Field(None, gt=0, description="Cost per delivery point, RUB")
+    standard_trip_weight: Decimal | None = Field(None, gt=0, description="Standard trip cargo weight, kg")
+    standard_box: StandardBoxInfoUpdate | None = None
+    discount: DiscountInfoUpdate | None = None
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "driver_hourly_rate": "1500.00",
+                "fuel_price_per_liter": "75.00",
+                "standard_box": {
+                    "length": 60,
+                    "max_weight": "20.00"
+                },
+                "discount": {
+                    "min_points": 250,
+                    "initial_percent": "7.00"
+                }
+            }
+        }
+    )
+
+
 class RegionStatsResponse(BaseModel):
     """Region statistics."""
 
-    distribution_centers_count: int = Field(..., description="Количество распределительных центров")
-    sectors_count: int = Field(..., description="Количество секторов доставки")
-    settlements_count: int = Field(..., description="Количество населенных пунктов")
+    distribution_centers_count: int = Field(..., description="Number of distribution centers")
+    sectors_count: int = Field(..., description="Number of delivery sectors")
+    settlements_count: int = Field(..., description="Number of settlements")
 
 
 class RegionListResponse(BaseModel):
@@ -167,7 +205,7 @@ class RegionListResponse(BaseModel):
 
     id: int
     name: str
-    type: str | None = Field(None, description="Тип региона (край, область, и т.д.)")
+    type: str | None = Field(None, description="Region type (krai, oblast, etc.)")
     country: CountryResponse
 
     model_config = ConfigDict(from_attributes=True)
@@ -178,15 +216,15 @@ class RegionDetailResponse(BaseModel):
 
     id: int
     name: str
-    type: str | None = Field(None, description="Тип региона (край, область, и т.д.)")
+    type: str | None = Field(None, description="Region type (krai, oblast, etc.)")
     country: CountryResponse
     distribution_centers: list[DistributionCenterBrief] = Field(
         default_factory=list,
-        description="Распределительные центры региона"
+        description="Region distribution centers"
     )
     pricing: RegionPricingResponse | None = Field(
         None,
-        description="Тарифы и параметры расчета (null если не настроены)"
+        description="Pricing and calculation parameters (null if not configured)"
     )
     stats: RegionStatsResponse
 
