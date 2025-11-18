@@ -267,3 +267,102 @@ async def test_search_delivery_points_with_tags(
     assert len(result["items"]) == 1
     assert result["items"][0]["id"] == 1
     assert mock_db_session.execute.called
+
+
+@pytest.mark.asyncio
+async def test_search_delivery_points_by_name_prefix(
+    mock_db_session, fake_delivery_points_rows
+):
+    """Test search delivery points by name prefix (3-4 characters)."""
+    # Setup mock
+    mock_result = MagicMock()
+    mock_result.all.return_value = [fake_delivery_points_rows[0]]
+    mock_db_session.execute.return_value = mock_result
+
+    # Search request with short query (3 chars)
+    filters = DeliveryPointSearchRequest(
+        region_id=1, only_in_sectors=False, search="маг"
+    )
+
+    # Call endpoint function
+    result = await search_delivery_points(filters=filters, db=mock_db_session)
+
+    # Assertions
+    assert result["total"] == 1
+    assert len(result["items"]) == 1
+    assert result["items"][0]["name"] == "Магазин Пятёрочка"
+    assert mock_db_session.execute.called
+
+
+@pytest.mark.asyncio
+async def test_search_delivery_points_by_name_fuzzy(
+    mock_db_session, fake_delivery_points_rows
+):
+    """Test search delivery points by name with fuzzy search (5+ characters)."""
+    # Setup mock
+    mock_result = MagicMock()
+    mock_result.all.return_value = [fake_delivery_points_rows[0]]
+    mock_db_session.execute.return_value = mock_result
+
+    # Search request with longer query (fuzzy search enabled)
+    filters = DeliveryPointSearchRequest(
+        region_id=1, only_in_sectors=False, search="магаз"
+    )
+
+    # Call endpoint function
+    result = await search_delivery_points(filters=filters, db=mock_db_session)
+
+    # Assertions
+    assert result["total"] == 1
+    assert len(result["items"]) == 1
+    assert result["items"][0]["name"] == "Магазин Пятёрочка"
+    assert mock_db_session.execute.called
+
+
+@pytest.mark.asyncio
+async def test_search_delivery_points_with_custom_limit(
+    mock_db_session, fake_delivery_points_rows
+):
+    """Test search delivery points with custom limit."""
+    # Setup mock
+    mock_result = MagicMock()
+    mock_result.all.return_value = [fake_delivery_points_rows[0]]
+    mock_db_session.execute.return_value = mock_result
+
+    # Search request with custom limit
+    filters = DeliveryPointSearchRequest(
+        region_id=1, only_in_sectors=False, limit=5
+    )
+
+    # Call endpoint function
+    result = await search_delivery_points(filters=filters, db=mock_db_session)
+
+    # Assertions
+    assert result["total"] == 1
+    assert len(result["items"]) == 1
+    assert mock_db_session.execute.called
+
+
+@pytest.mark.asyncio
+async def test_search_delivery_points_search_and_tags(
+    mock_db_session, fake_delivery_points_rows
+):
+    """Test search delivery points with both search and tags filters."""
+    # Setup mock
+    mock_result = MagicMock()
+    mock_result.all.return_value = [fake_delivery_points_rows[0]]
+    mock_db_session.execute.return_value = mock_result
+
+    # Search request with search + tags
+    filters = DeliveryPointSearchRequest(
+        region_id=1, only_in_sectors=False, search="маг", tag_ids=[1, 2]
+    )
+
+    # Call endpoint function
+    result = await search_delivery_points(filters=filters, db=mock_db_session)
+
+    # Assertions
+    assert result["total"] == 1
+    assert len(result["items"]) == 1
+    assert result["items"][0]["name"] == "Магазин Пятёрочка"
+    assert mock_db_session.execute.called

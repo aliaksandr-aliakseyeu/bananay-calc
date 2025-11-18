@@ -154,6 +154,70 @@ class RegionPricingResponse(BaseModel):
         )
 
 
+class StandardBoxInfoUpdate(BaseModel):
+    """Update schema for standard box."""
+
+    length: int | None = Field(None, gt=0, description="Длина эталонной коробки, см")
+    width: int | None = Field(None, gt=0, description="Ширина эталонной коробки, см")
+    height: int | None = Field(None, gt=0, description="Высота эталонной коробки, см")
+    max_weight: Decimal | None = Field(None, gt=0, description="Максимальный вес эталонной коробки, кг")
+
+
+class DiscountInfoUpdate(BaseModel):
+    """Update schema for discount parameters."""
+
+    min_points: int | None = Field(None, gt=0, description="Минимальное количество точек до применения скидки")
+    step_points: int | None = Field(None, gt=0, description="Шаг прироста количества точек доставки")
+    initial_percent: Decimal | None = Field(None, ge=0, le=100, description="Стартовая скидка, %")
+    step_percent: Decimal | None = Field(None, ge=0, le=100, description="Шаг прироста скидки, %")
+
+
+class RegionPricingUpdate(BaseModel):
+    """Update schema for region pricing (all fields optional)."""
+
+    # Водитель
+    driver_hourly_rate: Decimal | None = Field(None, gt=0, description="Стоимость 1 часа работы водителя, руб.")
+    planned_work_hours: Decimal | None = Field(None, gt=0, description="Часов на выполнение работы по плану")
+
+    # Транспорт
+    fuel_price_per_liter: Decimal | None = Field(None, gt=0, description="Стоимость бензина, руб/л")
+    fuel_consumption_per_100km: Decimal | None = Field(None, gt=0, description="Расход бензина, л/100км")
+    depreciation_coefficient: Decimal | None = Field(None, gt=0, description="Коэффициент амортизации авто")
+
+    # РЦ
+    warehouse_processing_per_kg: Decimal | None = Field(None, ge=0, description="Стоимость обработки 1 кг на РЦ, руб.")
+    service_fee_per_kg: Decimal | None = Field(None, ge=0, description="Сервисный сбор 1 кг (выручка компании), руб.")
+
+    # Адресная доставка
+    delivery_point_cost: Decimal | None = Field(None, gt=0, description="Стоимость одной точки доставки, руб.")
+
+    # Параметры рейса
+    standard_trip_weight: Decimal | None = Field(None, gt=0, description="Стандартный вес груза в рейсе, кг")
+
+    # Эталонная коробка
+    standard_box: StandardBoxInfoUpdate | None = None
+
+    # Скидки
+    discount: DiscountInfoUpdate | None = None
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "driver_hourly_rate": "1500.00",
+                "fuel_price_per_liter": "75.00",
+                "standard_box": {
+                    "length": 60,
+                    "max_weight": "20.00"
+                },
+                "discount": {
+                    "min_points": 250,
+                    "initial_percent": "7.00"
+                }
+            }
+        }
+    )
+
+
 class RegionStatsResponse(BaseModel):
     """Region statistics."""
 

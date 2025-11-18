@@ -28,6 +28,15 @@ class DeliveryPointSearchRequest(BaseModel):
         False,
         description="true = только точки в секторах, false = все точки региона"
     )
+    search: str | None = Field(
+        None,
+        min_length=3,
+        max_length=100,
+        description=(
+            "Поиск по названию (autocomplete). Минимум 3 символа. "
+            "Поддерживает префиксный поиск и нечёткий поиск с опечатками."
+        )
+    )
     bbox: BoundingBox | None = Field(
         None,
         description="Фильтр по прямоугольнику координат (опционально)"
@@ -36,18 +45,32 @@ class DeliveryPointSearchRequest(BaseModel):
         None,
         description="Фильтр по тэгам (опционально, OR логика)"
     )
+    limit: int | None = Field(
+        None,
+        ge=1,
+        le=50,
+        description=(
+            "Максимальное количество результатов. "
+            "⚠️ Применяется ТОЛЬКО при использовании параметра 'search' (автокомплит). "
+            "По умолчанию 15, максимум 50. "
+            "Без 'search' возвращаются все найденные точки."
+            "В будущем автокомплит необходимо вынести в отдельный endpoint."
+        )
+    )
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "region_id": 1,
-            "only_in_sectors": True,
+            "only_in_sectors": False,
+            "search": "маг",
             "bbox": {
                 "min_lng": 39.7,
                 "min_lat": 43.5,
                 "max_lng": 39.8,
                 "max_lat": 43.6
             },
-            "tag_ids": [1, 2, 3]
+            "tag_ids": [1, 2, 3],
+            "limit": 10
         }
     })
 

@@ -30,6 +30,7 @@ class DeliveryPoint(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    name_normalized: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     title: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment="Заголовок (дополнительное описание)"

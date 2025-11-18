@@ -9,7 +9,8 @@ from sqlalchemy.orm import joinedload, selectinload
 from app.db.base import get_db
 from app.db.models import DistributionCenter, Region, Sector, Settlement
 from app.schemas.region import (RegionDetailResponse, RegionListResponse,
-                                RegionPricingResponse, RegionStatsResponse)
+                                RegionPricingResponse, RegionPricingUpdate,
+                                RegionStatsResponse)
 
 router = APIRouter(prefix="/regions", tags=["Regions"])
 
@@ -92,6 +93,160 @@ async def get_region(
         "pricing": pricing_response,
         "stats": stats,
     }
+
+
+@router.get("/{region_id}/pricing", response_model=RegionPricingResponse)
+async def get_region_pricing(
+    region_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> RegionPricingResponse:
+    """
+    Get region pricing parameters for calculator.
+
+    Возвращает все параметры и тарифы, которые используются в калькуляторе
+    стоимости доставки для данного региона:
+    - Тарифы водителя
+    - Параметры транспорта (расход топлива, амортизация)
+    - Тарифы РЦ (складская обработка, сервисный сбор)
+    - Стоимость адресной доставки
+    - Параметры эталонной коробки
+    - Параметры скидок
+
+    **Параметры:**
+    - **region_id**: ID региона
+
+    **Используется для:**
+    - Отображения тарифов пользователю
+    - Проверки перед расчетом
+    - Понимания как формируется стоимость доставки
+    """
+    # Get region with pricing
+    query = (
+        select(Region)
+        .options(joinedload(Region.pricing))
+        .where(Region.id == region_id)
+    )
+
+    result = await db.execute(query)
+    region = result.unique().scalar_one_or_none()
+
+    if not region:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Region with id {region_id} not found",
+        )
+
+    if not region.pricing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Pricing not configured for region {region_id}",
+        )
+
+    return RegionPricingResponse.from_pricing_model(region.pricing)
+
+
+@router.patch("/{region_id}/pricing", response_model=RegionPricingResponse)
+async def update_region_pricing(
+    region_id: int,
+    pricing_update: RegionPricingUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> RegionPricingResponse:
+    """
+    Update region pricing parameters (partial update).
+
+    Обновляет параметры расчета для региона. Можно обновлять отдельные поля,
+    не передавая все параметры (PATCH семантика).
+
+    **Параметры:**
+    - **region_id**: ID региона
+    - **pricing_update**: Параметры для обновления (все поля опциональные)
+
+    **Примеры использования:**
+
+    1. Обновить только цену бензина:
+    ```json
+    {
+      "fuel_price_per_liter": "75.00"
+    }
+    ```
+
+    2. Обновить параметры эталонной коробки:
+    ```json
+    {
+      "standard_box": {
+        "length": 70,
+        "max_weight": "25.00"
+      }
+    }
+    ```
+
+    3. Обновить скидки:
+    ```json
+    {
+      "discount": {
+        "min_points": 250,
+        "initial_percent": "7.00"
+      }
+    }
+    ```
+
+    Возвращает обновленные параметры расчета.
+    """
+    # Get region with pricing
+    query = (
+        select(Region)
+        .options(joinedload(Region.pricing))
+        .where(Region.id == region_id)
+    )
+
+    result = await db.execute(query)
+    region = result.unique().scalar_one_or_none()
+
+    if not region:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Region with id {region_id} not found",
+        )
+
+    if not region.pricing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Pricing not configured for region {region_id}",
+        )
+
+    pricing = region.pricing
+
+    # Update fields (only if provided)
+    update_data = pricing_update.model_dump(exclude_unset=True)
+
+    # Update basic fields
+    for field, value in update_data.items():
+        if field == "standard_box" and value is not None:
+            # Update standard box fields
+            for box_field, box_value in value.items():
+                if box_value is not None:
+                    setattr(pricing, f"standard_box_{box_field}", box_value)
+        elif field == "discount" and value is not None:
+            # Update discount fields
+            discount_mapping = {
+                "min_points": "min_points_for_discount",
+                "step_points": "discount_step_points",
+                "initial_percent": "initial_discount_percent",
+                "step_percent": "discount_step_percent",
+            }
+            for disc_field, disc_value in value.items():
+                if disc_value is not None:
+                    db_field = discount_mapping[disc_field]
+                    setattr(pricing, db_field, disc_value)
+        elif field not in ["standard_box", "discount"] and value is not None:
+            # Update direct fields
+            setattr(pricing, field, value)
+
+    # Save changes
+    await db.commit()
+    await db.refresh(pricing)
+
+    return RegionPricingResponse.from_pricing_model(pricing)
 
 
 async def _get_region_stats(db: AsyncSession, region_id: int) -> RegionStatsResponse:
