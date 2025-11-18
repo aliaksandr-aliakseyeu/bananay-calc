@@ -3,47 +3,43 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-# ============================================================================
-# Request Schemas
-# ============================================================================
-
 
 class SupplierLocation(BaseModel):
     """Supplier location coordinates."""
 
-    latitude: float = Field(..., ge=-90, le=90, description="Широта", examples=[43.585472])
-    longitude: float = Field(..., ge=-180, le=180, description="Долгота", examples=[39.723098])
+    latitude: float = Field(..., ge=-90, le=90, description="Latitude", examples=[43.585472])
+    longitude: float = Field(..., ge=-180, le=180, description="Longitude", examples=[39.723098])
 
 
 class ProductParams(BaseModel):
     """Product parameters."""
 
-    length_cm: int = Field(..., gt=0, description="Длина товара, см", examples=[20])
-    width_cm: int = Field(..., gt=0, description="Ширина товара, см", examples=[10])
-    height_cm: int = Field(..., gt=0, description="Высота товара, см", examples=[10])
-    weight_kg: Decimal = Field(..., gt=0, description="Вес одного товара, кг", examples=[1.0])
+    length_cm: int = Field(..., gt=0, description="Product length, cm", examples=[20])
+    width_cm: int = Field(..., gt=0, description="Product width, cm", examples=[10])
+    height_cm: int = Field(..., gt=0, description="Product height, cm", examples=[10])
+    weight_kg: Decimal = Field(..., gt=0, description="Weight of one item, kg", examples=[1.0])
     items_per_box: int = Field(
-        ..., gt=0, description="Количество единиц товара в коробке поставщика", examples=[15]
+        ..., gt=0, description="Number of items in supplier's box", examples=[15]
     )
 
 
 class DeliveryParams(BaseModel):
     """Delivery parameters for estimate calculation."""
 
-    num_points: int = Field(..., gt=0, description="Количество точек доставки", examples=[300])
+    num_points: int = Field(..., gt=0, description="Number of delivery points", examples=[300])
     num_sectors: int | None = Field(
-        None, gt=0, description="Количество секторов (опционально)", examples=[10]
+        None, gt=0, description="Number of sectors (optional)", examples=[10]
     )
 
 
 class CalculatorByPointsRequest(BaseModel):
     """Request for calculator by delivery points."""
 
-    region_id: int = Field(..., description="ID региона", examples=[1])
-    supplier_location: SupplierLocation = Field(..., description="Координаты поставщика")
-    product: ProductParams = Field(..., description="Параметры товара")
+    region_id: int = Field(..., description="Region ID", examples=[1])
+    supplier_location: SupplierLocation = Field(..., description="Supplier coordinates")
+    product: ProductParams = Field(..., description="Product parameters")
     delivery_point_ids: list[int] = Field(
-        ..., min_length=1, description="Список ID точек доставки"
+        ..., min_length=1, description="List of delivery point IDs"
     )
 
     model_config = ConfigDict(
@@ -81,10 +77,10 @@ class CalculatorByPointsRequest(BaseModel):
 class CalculatorEstimateRequest(BaseModel):
     """Request for calculator estimate."""
 
-    region_id: int = Field(..., description="ID региона", examples=[1])
-    supplier_location: SupplierLocation = Field(..., description="Координаты поставщика")
-    product: ProductParams = Field(..., description="Параметры товара")
-    delivery: DeliveryParams = Field(..., description="Параметры доставки")
+    region_id: int = Field(..., description="Region ID", examples=[1])
+    supplier_location: SupplierLocation = Field(..., description="Supplier coordinates")
+    product: ProductParams = Field(..., description="Product parameters")
+    delivery: DeliveryParams = Field(..., description="Delivery parameters")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -110,49 +106,44 @@ class CalculatorEstimateRequest(BaseModel):
     )
 
 
-# ============================================================================
-# Response Schemas
-# ============================================================================
-
-
 class CalculatorByPointsResponse(BaseModel):
     """Response for calculator by delivery points."""
 
     items_in_standard_box: int = Field(
         ...,
-        description="Количество товара поставщика в одной эталонной коробке "
-        "с учетом ограничения по весу",
+        description="Number of supplier's items in one standard box "
+        "considering weight limit",
         examples=[18],
     )
     cost_per_item: Decimal = Field(
         ...,
-        description="Стоимость доставки одной единицы товара поставщика, руб.",
+        description="Delivery cost per one supplier's item, RUB",
         examples=[38.29],
     )
     cost_per_supplier_box: Decimal = Field(
         ...,
-        description="Стоимость доставки одной коробки товара поставщика, руб.",
+        description="Delivery cost per one supplier's box, RUB",
         examples=[574.35],
     )
     delivery_points_used: int = Field(
-        ..., description="Количество использованных точек доставки", examples=[150]
+        ..., description="Number of used delivery points", examples=[150]
     )
     delivery_points_ignored: int = Field(
-        ..., description="Количество проигнорированных точек доставки", examples=[5]
+        ..., description="Number of ignored delivery points", examples=[5]
     )
     sectors_count: int = Field(
         ...,
-        description="Количество уникальных секторов, в которые попали точки доставки",
+        description="Number of unique sectors containing delivery points",
         examples=[3],
     )
     distance_to_dc_km: Decimal = Field(
         ...,
-        description="Расстояние до ближайшего распределительного центра, км",
+        description="Distance to nearest distribution center, km",
         examples=[15.50],
     )
     nearest_dc_name: str = Field(
         ...,
-        description="Название ближайшего распределительного центра",
+        description="Name of nearest distribution center",
         examples=["РЦ Сочи"],
     )
 
@@ -162,27 +153,27 @@ class CalculatorEstimateResponse(BaseModel):
 
     items_in_standard_box: int = Field(
         ...,
-        description="Количество товара поставщика в одной эталонной коробке "
-        "с учетом ограничения по весу",
+        description="Number of supplier's items in one standard box "
+        "considering weight limit",
         examples=[18],
     )
     cost_per_item: Decimal = Field(
         ...,
-        description="Стоимость доставки одной единицы товара поставщика, руб.",
+        description="Delivery cost per one supplier's item, RUB",
         examples=[38.29],
     )
     cost_per_supplier_box: Decimal = Field(
         ...,
-        description="Стоимость доставки одной коробки товара поставщика, руб.",
+        description="Delivery cost per one supplier's box, RUB",
         examples=[574.35],
     )
     distance_to_dc_km: Decimal = Field(
         ...,
-        description="Расстояние до ближайшего распределительного центра, км",
+        description="Distance to nearest distribution center, km",
         examples=[15.50],
     )
     nearest_dc_name: str = Field(
         ...,
-        description="Название ближайшего распределительного центра",
+        description="Name of nearest distribution center",
         examples=["РЦ Сочи"],
     )

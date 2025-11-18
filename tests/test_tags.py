@@ -20,15 +20,12 @@ def fake_tags():
 @pytest.mark.asyncio
 async def test_get_tags_empty(mock_db_session):
     """Test getting tags when no tags exist."""
-    # Setup mock to return empty list
     mock_result = MagicMock()
     mock_result.scalars().all.return_value = []
     mock_db_session.execute.return_value = mock_result
 
-    # Call endpoint function
     result = await get_tags(db=mock_db_session)
 
-    # Assertions
     assert result == []
     assert mock_db_session.execute.called
 
@@ -36,15 +33,12 @@ async def test_get_tags_empty(mock_db_session):
 @pytest.mark.asyncio
 async def test_get_tags_returns_list(mock_db_session, fake_tags):
     """Test getting all tags."""
-    # Setup mock to return fake tags
     mock_result = MagicMock()
     mock_result.scalars().all.return_value = fake_tags
     mock_db_session.execute.return_value = mock_result
 
-    # Call endpoint function
     result = await get_tags(db=mock_db_session)
 
-    # Assertions
     assert len(result) == 3
     assert result[0].id == 1
     assert result[0].name == "Продукты питания"
@@ -57,13 +51,10 @@ async def test_get_tags_returns_list(mock_db_session, fake_tags):
 @pytest.mark.asyncio
 async def test_get_tags_ordered_by_name(mock_db_session, fake_tags):
     """Test that tags are ordered by name."""
-    # Setup mock
     mock_result = MagicMock()
     mock_result.scalars().all.return_value = fake_tags
     mock_db_session.execute.return_value = mock_result
 
-    # Call endpoint function
     result = await get_tags(db=mock_db_session)
 
-    # Verify ordering (query orders by name)
     assert len(result) == 3

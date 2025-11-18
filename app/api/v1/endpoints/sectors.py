@@ -17,21 +17,20 @@ router = APIRouter(prefix="/sectors", tags=["Sectors"])
 @router.get("", response_model=list[SectorResponse])
 async def get_sectors(
     db: Annotated[AsyncSession, Depends(get_db)],
-    region_id: Annotated[int, Query(description="ID региона для фильтрации секторов")],
+    region_id: Annotated[int, Query(description="Region ID to filter sectors")],
 ) -> list[dict]:
     """
     Get all sectors for a region.
 
-    Возвращает список всех секторов доставки для указанного региона
-    с границами в формате GeoJSON.
+    Returns list of all delivery sectors for the specified region
+    with boundaries in GeoJSON format.
 
-    **Параметры:**
-    - **region_id** (обязательно): ID региона для получения его секторов
+    **Parameters:**
+    - **region_id** (required): Region ID to get its sectors
 
-    **Формат boundary:**
-    GeoJSON Polygon с координатами в формате [longitude, latitude]
+    **Boundary format:**
+    GeoJSON Polygon with coordinates in [longitude, latitude] format
     """
-    # Query sectors with GeoJSON conversion
     query = select(
         Sector.id,
         Sector.region_id,
@@ -45,7 +44,6 @@ async def get_sectors(
     result = await db.execute(query)
     rows = result.all()
 
-    # Convert to response format
     sectors = []
     for row in rows:
         boundary_data = json.loads(row.boundary_geojson)

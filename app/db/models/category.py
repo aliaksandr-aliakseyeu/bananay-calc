@@ -8,7 +8,7 @@ from app.utils.slugify import slugify
 
 
 class Category(Base):
-    """Раздел (категория заведения)."""
+    """Category (establishment category)."""
 
     __tablename__ = "categories"
 
@@ -21,7 +21,7 @@ class Category(Base):
 
     @validates('slug', 'name')
     def generate_slug(self, key: str, value: str) -> str:
-        """Автогенерация slug из name если slug не указан."""
+        """Auto-generate slug from name if slug is not specified."""
         if key == 'name':
             if not self.slug:
                 self.slug = slugify(value)
@@ -33,7 +33,7 @@ class Category(Base):
 
 
 class Subcategory(Base):
-    """Подраздел (подкатегория)."""
+    """Subcategory."""
 
     __tablename__ = "subcategories"
 
@@ -49,7 +49,7 @@ class Subcategory(Base):
 
     @validates('slug', 'name')
     def generate_slug(self, key: str, value: str) -> str:
-        """Автогенерация slug из name если slug не указан."""
+        """Auto-generate slug from name if slug is not specified."""
         if key == 'name':
             if not self.slug:
                 self.slug = slugify(value)
@@ -61,7 +61,7 @@ class Subcategory(Base):
 
 
 class Tag(Base):
-    """Рубрика (тэг)."""
+    """Tag (category tag)."""
 
     __tablename__ = "tags"
 
@@ -71,7 +71,7 @@ class Tag(Base):
 
     @validates('slug', 'name')
     def generate_slug(self, key: str, value: str) -> str:
-        """Автогенерация slug из name если slug не указан."""
+        """Auto-generate slug from name if slug is not specified."""
         if key == 'name':
             if not self.slug:
                 self.slug = slugify(value)

@@ -24,7 +24,7 @@ delivery_point_tags = Table(
 
 
 class DeliveryPoint(Base):
-    """Точка доставки."""
+    """Delivery point."""
 
     __tablename__ = "delivery_points"
 
@@ -33,7 +33,7 @@ class DeliveryPoint(Base):
     name_normalized: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     title: Mapped[str | None] = mapped_column(
-        Text, nullable=True, comment="Заголовок (дополнительное описание)"
+        Text, nullable=True, comment="Title (additional description)"
     )
     settlement_id: Mapped[int] = mapped_column(
         ForeignKey("settlements.id"), nullable=False, index=True
@@ -54,22 +54,22 @@ class DeliveryPoint(Base):
     subcategory_id: Mapped[int | None] = mapped_column(
         ForeignKey("subcategories.id"), nullable=True, index=True
     )
-    # TODO: MVP - контакты в основной таблице.
-    # TODO: Для production: вынести в отдельную таблицу DeliveryPointContact (many-to-one)
+    # TODO: MVP - contacts in main table.
+    # TODO: For production: move to separate DeliveryPointContact table (many-to-one)
     phone: Mapped[str | None] = mapped_column(
-        Text, nullable=True, comment="Может содержать несколько номеров через запятую"
+        Text, nullable=True, comment="May contain multiple phone numbers separated by comma"
     )
     mobile: Mapped[str | None] = mapped_column(
-        Text, nullable=True, comment="Может содержать несколько номеров через запятую"
+        Text, nullable=True, comment="May contain multiple mobile numbers separated by comma"
     )
     email: Mapped[str | None] = mapped_column(
-        Text, nullable=True, comment="Может содержать несколько email через запятую"
+        Text, nullable=True, comment="May contain multiple emails separated by comma"
     )
 
-    # TODO: MVP - расписание как текст.
-    # TODO: Для production: отдельная таблица DeliveryPointSchedule с полями:
+    # TODO: MVP - schedule as text.
+    # TODO: For production: separate DeliveryPointSchedule table with fields:
     # TODO: - day_of_week (0-6), open_time, close_time, is_24_hours
-    # TODO: Это позволит делать фильтр "открыто сейчас"
+    # TODO: This will allow "open now" filter
     schedule: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

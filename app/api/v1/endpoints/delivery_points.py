@@ -30,19 +30,11 @@ def normalize_search_query(query: str) -> str:
     """
     import re
 
-    # Convert to lowercase
     normalized = query.lower()
-
-    # Replace ё with е
     normalized = normalized.replace('ё', 'е')
-
-    # Remove special characters (keep only letters, numbers, spaces)
     normalized = re.sub(r'[^а-яa-z0-9\s]', ' ', normalized)
-
-    # Collapse multiple spaces into one
     normalized = re.sub(r'\s+', ' ', normalized)
 
-    # Trim spaces
     return normalized.strip()
 
 
@@ -54,32 +46,31 @@ async def search_delivery_points(
     """
     Search delivery points with filters.
 
-    Поиск точек доставки с различными фильтрами:
-    - **region_id** (обязательно): ID региона
-    - **only_in_sectors**: true = только точки внутри секторов, false = все точки
-    - **search** (опционально): поиск по названию (autocomplete, min 3 символа)
-    - **bbox** (опционально): прямоугольник координат для фильтрации
-    - **tag_ids** (опционально): фильтр по тэгам
-    - **limit** (опционально): максимальное количество результатов (по умолчанию 10)
+    Search for delivery points with various filters:
+    - **region_id** (required): Region ID
+    - **only_in_sectors**: true = only points inside sectors, false = all points
+    - **search** (optional): search by name (autocomplete, min 3 characters)
+    - **bbox** (optional): bounding box of coordinates for filtering
+    - **tag_ids** (optional): filter by tags
+    - **limit** (optional): maximum number of results (default 10)
 
-    **Примеры использования:**
+    **Usage examples:**
 
-    1. Все точки региона:
+    1. All points in region:
     ```json
     {"region_id": 1, "only_in_sectors": false}
     ```
 
-    2. Поиск по названию:
+    2. Search by name:
     ```json
-    {"region_id": 1, "search": "маг", "only_in_sectors": false}
+    {"region_id": 1, "search": "mag", "only_in_sectors": false}
     ```
 
-    3. Поиск с опечатками (5+ символов):
+    3. Search with typos (5+ characters):
     ```json
-    {"region_id": 1, "search": "манит", "only_in_sectors": false}
+    {"region_id": 1, "search": "manit", "only_in_sectors": false}
     ```
     """
-    # Base query with all needed columns
     query = select(
         DeliveryPoint.id,
         DeliveryPoint.name,
@@ -98,17 +89,13 @@ async def search_delivery_points(
         Settlement, DeliveryPoint.settlement_id == Settlement.id
     )
 
-    # Filter by region
     query = query.where(Settlement.region_id == filters.region_id)
 
-    # Search by name if provided
     if filters.search:
         normalized_search = normalize_search_query(filters.search)
         search_length = len(normalized_search)
 
-        # For 3-4 characters: prefix search only
         if search_length < settings.SEARCH_FUZZY_MIN_LENGTH:
-            # Search at beginning of string OR beginning of any word
             query = query.where(
                 or_(
                     DeliveryPoint.name_normalized.like(f'{normalized_search}%'),
@@ -116,7 +103,6 @@ async def search_delivery_points(
                 )
             )
 
-            # Order by: beginning of string first, then by name
             query = query.order_by(
                 case(
                     (DeliveryPoint.name_normalized.like(f'{normalized_search}%'), 1),
@@ -125,18 +111,12 @@ async def search_delivery_points(
                 DeliveryPoint.name
             )
 
-        # For 5+ characters: prefix search + fuzzy search
         else:
-            # Calculate similarity for ranking
             similarity_score = func.similarity(
                 DeliveryPoint.name_normalized,
                 normalized_search
             )
-
-            # Add similarity to select for ordering
             query = query.add_columns(similarity_score.label('similarity'))
-
-            # Search conditions: prefix OR similarity match
             query = query.where(
                 or_(
                     DeliveryPoint.name_normalized.like(f'{normalized_search}%'),
@@ -144,8 +124,6 @@ async def search_delivery_points(
                     similarity_score > settings.SEARCH_SIMILARITY_THRESHOLD
                 )
             )
-
-            # Order by: match type, similarity score (desc), length (asc), name
             query = query.order_by(
                 case(
                     (DeliveryPoint.name_normalized.like(f'{normalized_search}%'), 1),
@@ -193,11 +171,9 @@ async def search_delivery_points(
         )
         query = query.where(tag_exists)
 
-    # Default ordering if no search was applied
     if not filters.search:
         query = query.order_by(DeliveryPoint.name)
     else:
-        # Apply limit ONLY for autocomplete search
         result_limit = filters.limit if filters.limit else settings.SEARCH_DEFAULT_LIMIT
         query = query.limit(result_limit)
 

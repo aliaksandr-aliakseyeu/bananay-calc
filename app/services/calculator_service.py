@@ -48,7 +48,6 @@ class CalculatorService:
         Returns:
             Tuple of (distribution_center, distance_km, calculation_method) or None
         """
-        # Get all active distribution centers
         result = await self.db.execute(
             select(DistributionCenter).where(
                 DistributionCenter.is_active == True  # noqa: E712
@@ -60,7 +59,6 @@ class CalculatorService:
             logger.warning("No distribution centers found")
             return None
 
-        # Calculate straight-line distances to all DCs
         dc_distances: list[tuple[DistributionCenter, float]] = []
 
         for dc in distribution_centers:
@@ -70,11 +68,9 @@ class CalculatorService:
             )
             dc_distances.append((dc, straight_distance))
 
-        # Sort by distance and take top 3
         dc_distances.sort(key=lambda x: x[1])
         top_3_dcs = dc_distances[:3]
 
-        # Try to get actual route distances for top 3
         dc_route_distances: list[tuple[DistributionCenter, float, str]] = []
 
         for dc, straight_distance in top_3_dcs:
@@ -86,7 +82,6 @@ class CalculatorService:
 
             dc_route_distances.append((dc, route_distance, method))
 
-        # Select DC with minimum route distance
         nearest_dc, distance_km, method = min(
             dc_route_distances, key=lambda x: x[1]
         )
@@ -117,8 +112,6 @@ class CalculatorService:
         Returns:
             Tuple of (num_valid_points, num_sectors, num_ignored_points)
         """
-        # Get delivery points with their sectors using PostGIS spatial join
-        # ST_Within checks if delivery point location is within sector boundary
         result = await self.db.execute(
             select(DeliveryPoint, Sector)
             .join(
@@ -134,12 +127,9 @@ class CalculatorService:
 
         valid_points = result.all()
 
-        # Count unique delivery points (in case a point falls into multiple sectors)
         unique_point_ids = set(point.DeliveryPoint.id for point in valid_points)
         num_valid_points = len(unique_point_ids)
         num_ignored = len(delivery_point_ids) - num_valid_points
-
-        # Count unique sectors
         unique_sectors = set(point.Sector.id for point in valid_points)
         num_sectors = len(unique_sectors)
 
@@ -180,27 +170,16 @@ class CalculatorService:
         Returns:
             Dictionary with all cost calculations
         """
-        # a) Driver cost
         driver_cost = pricing.planned_work_hours * pricing.driver_hourly_rate
-
-        # b) Company revenue (service fee)
         company_revenue = pricing.service_fee_per_kg * pricing.standard_trip_weight
-
-        # c) Fuel cost
         fuel_liters = (
             pricing.fuel_consumption_per_100km / Decimal("100")
         ) * (Decimal(str(distance_km)) * Decimal("2"))
         fuel_cost = fuel_liters * pricing.fuel_price_per_liter
-
-        # d) Transport cost (fuel + depreciation)
         transport_cost = fuel_cost * pricing.depreciation_coefficient
-
-        # e) Warehouse cost
         warehouse_cost = (
             pricing.warehouse_processing_per_kg * pricing.standard_trip_weight
         )
-
-        # f) Address delivery cost with discounts
         if num_points < pricing.min_points_for_discount:
             delivery_cost = (
                 num_sectors
@@ -208,7 +187,6 @@ class CalculatorService:
                 * pricing.min_points_for_discount
             )
         else:
-            # Calculate discount
             discount_steps = int(
                 (num_points - pricing.min_points_for_discount)
                 / pricing.discount_step_points
@@ -224,8 +202,6 @@ class CalculatorService:
                 * pricing.min_points_for_discount
             )
             delivery_cost = base_cost * (Decimal("1") - discount_percent / Decimal("100"))
-
-        # Total trip cost
         total_trip_cost = (
             driver_cost
             + company_revenue
@@ -234,7 +210,6 @@ class CalculatorService:
             + delivery_cost
         )
 
-        # Standard box calculations
         num_standard_boxes = (
             pricing.standard_trip_weight / pricing.standard_box_max_weight
         )
@@ -267,18 +242,13 @@ class CalculatorService:
         Returns:
             Dictionary with fitting calculations
         """
-        # By dimensions
         n_length = pricing.standard_box_length // product.length_cm
         n_width = pricing.standard_box_width // product.width_cm
         n_height = pricing.standard_box_height // product.height_cm
         items_by_dimensions = n_length * n_width * n_height
-
-        # By weight
         items_by_weight = int(
             pricing.standard_box_max_weight / product.weight_kg
         )
-
-        # Final count (minimum of both constraints)
         items_in_standard_box = min(items_by_dimensions, items_by_weight)
 
         logger.info(
@@ -313,8 +283,6 @@ class CalculatorService:
         """
         cost_per_item = standard_box_cost / Decimal(str(items_in_standard_box))
         cost_per_supplier_box = cost_per_item * Decimal(str(items_per_supplier_box))
-
-        # Round to 2 decimal places
         cost_per_item = cost_per_item.quantize(Decimal("0.01"))
         cost_per_supplier_box = cost_per_supplier_box.quantize(Decimal("0.01"))
 
@@ -347,20 +315,15 @@ class CalculatorService:
         Raises:
             ValueError: If validation fails
         """
-        # Get pricing
         pricing = await self.get_region_pricing(region_id)
         if not pricing:
             raise ValueError(f"Pricing not configured for region {region_id}")
-
-        # Get delivery info from points
         num_points, num_sectors, num_ignored = await self.get_delivery_info_from_points(
             delivery_point_ids, region_id
         )
 
         if num_points == 0:
             raise ValueError("No valid delivery points provided")
-
-        # Find nearest DC
         dc_info = await self.get_nearest_distribution_center(
             supplier_lat, supplier_lon, region_id
         )
@@ -368,19 +331,13 @@ class CalculatorService:
             raise ValueError("No distribution centers found")
 
         dc, distance_km, distance_method = dc_info
-
-        # Calculate costs
         costs = self.calculate_delivery_costs(
             pricing, distance_km, num_points, num_sectors
         )
-
-        # Calculate product fitting
         fitting = self.calculate_product_fitting(pricing, product)
 
         if fitting["items_in_standard_box"] == 0:
             raise ValueError("Product doesn't fit in standard box")
-
-        # Calculate final results
         final = self.calculate_final_results(
             costs["standard_box_cost"],
             fitting["items_in_standard_box"],
@@ -424,17 +381,12 @@ class CalculatorService:
         Raises:
             ValueError: If validation fails
         """
-        # Get pricing
         pricing = await self.get_region_pricing(region_id)
         if not pricing:
             raise ValueError(f"Pricing not configured for region {region_id}")
-
-        # Get num_sectors if not provided
         if num_sectors is None:
             num_sectors = await self.get_max_sectors_for_region(region_id)
             logger.info("Using max sectors for region: %d", num_sectors)
-
-        # Find nearest DC
         dc_info = await self.get_nearest_distribution_center(
             supplier_lat, supplier_lon, region_id
         )
@@ -442,19 +394,13 @@ class CalculatorService:
             raise ValueError("No distribution centers found")
 
         dc, distance_km, distance_method = dc_info
-
-        # Calculate costs
         costs = self.calculate_delivery_costs(
             pricing, distance_km, num_points, num_sectors
         )
-
-        # Calculate product fitting
         fitting = self.calculate_product_fitting(pricing, product)
 
         if fitting["items_in_standard_box"] == 0:
             raise ValueError("Product doesn't fit in standard box")
-
-        # Calculate final results
         final = self.calculate_final_results(
             costs["standard_box_cost"],
             fitting["items_in_standard_box"],

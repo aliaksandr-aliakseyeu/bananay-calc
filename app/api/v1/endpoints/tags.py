@@ -19,8 +19,8 @@ async def get_tags(
     """
     Get all tags.
 
-    Возвращает список всех тэгов (рубрик) для фильтрации точек доставки.
-    Отсортировано по имени.
+    Returns list of all tags (categories) for filtering delivery points.
+    Sorted by name.
     """
     query = select(Tag).order_by(Tag.name)
     result = await db.execute(query)

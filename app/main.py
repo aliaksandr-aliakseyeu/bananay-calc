@@ -7,7 +7,7 @@ from app.core.config import settings
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="API для расчета стоимости доставки от распределительных центров до точек доставки",
+    description="API for calculating delivery costs from distribution centers to delivery points",
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -17,13 +17,12 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # В production указать конкретные домены
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include API router
 app.include_router(api_router, prefix="/api")
 
 

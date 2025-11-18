@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class Region(Base):
-    """Регион (субъект РФ)."""
+    """Region (subject of Russian Federation)."""
 
     __tablename__ = "regions"
 
@@ -28,7 +28,7 @@ class Region(Base):
     type: Mapped[RegionType | None] = mapped_column(
         SQLEnum(RegionType, native_enum=False, length=50),
         nullable=True,
-        comment="Тип региона"
+        comment="Region type"
     )
     country: Mapped["Country"] = relationship("Country", back_populates="regions")
     settlements: Mapped[list["Settlement"]] = relationship(

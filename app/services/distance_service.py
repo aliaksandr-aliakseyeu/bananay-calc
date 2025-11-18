@@ -31,13 +31,11 @@ class DistanceService:
         Returns:
             Distance in kilometers
         """
-        # Convert to radians
         lat1_rad = math.radians(lat1)
         lon1_rad = math.radians(lon1)
         lat2_rad = math.radians(lat2)
         lon2_rad = math.radians(lon2)
 
-        # Haversine formula
         dlat = lat2_rad - lat1_rad
         dlon = lon2_rad - lon1_rad
 
@@ -47,7 +45,6 @@ class DistanceService:
         )
         c = 2 * math.asin(math.sqrt(a))
 
-        # Earth radius in kilometers
         earth_radius = 6371.0
 
         return earth_radius * c
@@ -64,7 +61,7 @@ class DistanceService:
             Tuple of (latitude, longitude)
         """
         shape: Point = to_shape(geometry)
-        return shape.y, shape.x  # Point.y is latitude, Point.x is longitude
+        return shape.y, shape.x
 
     @staticmethod
     async def get_openrouteservice_route_distance(
@@ -90,7 +87,6 @@ class DistanceService:
             return None
 
         try:
-            # OpenRouteService format: longitude,latitude
             params = {
                 "api_key": settings.OPENROUTESERVICE_API_KEY,
                 "start": f"{from_lon},{from_lat}",
@@ -108,8 +104,6 @@ class DistanceService:
 
                 data = response.json()
 
-                # Extract distance from response
-                # OpenRouteService returns distance in meters in features[0].properties.summary.distance
                 if "features" in data and len(data["features"]) > 0:
                     summary = data["features"][0].get("properties", {}).get("summary", {})
                     distance_meters = summary.get("distance")
@@ -183,8 +177,6 @@ class DistanceService:
 
                 data = response.json()
 
-                # Extract distance from response
-                # Yandex Router API v2 returns distance in meters
                 if "route" in data and "distance" in data["route"]:
                     distance_meters = data["route"]["distance"]
                     return distance_meters / 1000.0  # Convert to km
@@ -225,9 +217,9 @@ class DistanceService:
         Calculate distance using configured routing provider with fallback.
 
         Tries routing API based on ROUTING_PROVIDER setting:
-        - 'openroute': OpenRouteService (бесплатно, 2000 req/day)
-        - 'yandex': Yandex Router API (платно)
-        - 'fallback': сразу использует коэффициент
+        - 'openroute': OpenRouteService (free, 2000 req/day)
+        - 'yandex': Yandex Router API (paid)
+        - 'fallback': uses coefficient immediately
 
         If API fails, falls back to straight line distance × coefficient.
 
@@ -244,7 +236,6 @@ class DistanceService:
         provider = settings.ROUTING_PROVIDER.lower()
         api_distance = None
 
-        # Try configured routing provider
         if provider == "openroute":
             api_distance = await cls.get_openrouteservice_route_distance(
                 from_lat, from_lon, to_lat, to_lon
@@ -273,7 +264,6 @@ class DistanceService:
                 provider
             )
 
-        # Fallback to straight line distance with coefficient
         straight_distance = cls.haversine_distance(
             from_lat, from_lon, to_lat, to_lon
         )

@@ -18,15 +18,15 @@ router = APIRouter(prefix="/regions", tags=["Regions"])
 @router.get("", response_model=list[RegionListResponse])
 async def get_regions(
     db: Annotated[AsyncSession, Depends(get_db)],
-    country_id: Annotated[int | None, Query(description="Фильтр по ID страны")] = None,
+    country_id: Annotated[int | None, Query(description="Filter by country ID")] = None,
 ) -> list[Region]:
     """
     Get all regions.
 
-    Возвращает список всех регионов с информацией о стране.
+    Returns list of all regions with country information.
 
-    **Фильтры:**
-    - **country_id** (опционально): ID страны для фильтрации регионов
+    **Filters:**
+    - **country_id** (optional): Country ID for filtering regions
     """
     query = select(Region).options(joinedload(Region.country)).order_by(Region.name)
 
@@ -47,17 +47,16 @@ async def get_region(
     """
     Get region by ID with full information.
 
-    Возвращает полную информацию о регионе:
-    - Основные данные
-    - Страна
-    - Распределительные центры
-    - Тарифы и параметры расчета (если настроены)
-    - Статистика
+    Returns complete information about the region:
+    - Basic data
+    - Country
+    - Distribution centers
+    - Pricing and calculation parameters (if configured)
+    - Statistics
 
-    **Параметры:**
-    - **region_id**: ID региона
+    **Parameters:**
+    - **region_id**: Region ID
     """
-    # Get region with relationships
     query = (
         select(Region)
         .options(
@@ -83,7 +82,6 @@ async def get_region(
     if region.pricing:
         pricing_response = RegionPricingResponse.from_pricing_model(region.pricing)
 
-    # Build respose
     return {
         "id": region.id,
         "name": region.name,
@@ -103,24 +101,23 @@ async def get_region_pricing(
     """
     Get region pricing parameters for calculator.
 
-    Возвращает все параметры и тарифы, которые используются в калькуляторе
-    стоимости доставки для данного региона:
-    - Тарифы водителя
-    - Параметры транспорта (расход топлива, амортизация)
-    - Тарифы РЦ (складская обработка, сервисный сбор)
-    - Стоимость адресной доставки
-    - Параметры эталонной коробки
-    - Параметры скидок
+    Returns all parameters and rates used in the delivery cost calculator
+    for this region:
+    - Driver rates
+    - Transport parameters (fuel consumption, depreciation)
+    - DC rates (warehouse handling, service fee)
+    - Address delivery cost
+    - Standard box parameters
+    - Discount parameters
 
-    **Параметры:**
-    - **region_id**: ID региона
+    **Parameters:**
+    - **region_id**: Region ID
 
-    **Используется для:**
-    - Отображения тарифов пользователю
-    - Проверки перед расчетом
-    - Понимания как формируется стоимость доставки
+    **Used for:**
+    - Displaying rates to the user
+    - Validation before calculation
+    - Understanding how delivery cost is formed
     """
-    # Get region with pricing
     query = (
         select(Region)
         .options(joinedload(Region.pricing))
@@ -154,23 +151,23 @@ async def update_region_pricing(
     """
     Update region pricing parameters (partial update).
 
-    Обновляет параметры расчета для региона. Можно обновлять отдельные поля,
-    не передавая все параметры (PATCH семантика).
+    Updates calculation parameters for the region. Individual fields can be updated
+    without passing all parameters (PATCH semantics).
 
-    **Параметры:**
-    - **region_id**: ID региона
-    - **pricing_update**: Параметры для обновления (все поля опциональные)
+    **Parameters:**
+    - **region_id**: Region ID
+    - **pricing_update**: Parameters to update (all fields are optional)
 
-    **Примеры использования:**
+    **Usage examples:**
 
-    1. Обновить только цену бензина:
+    1. Update only fuel price:
     ```json
     {
       "fuel_price_per_liter": "75.00"
     }
     ```
 
-    2. Обновить параметры эталонной коробки:
+    2. Update standard box parameters:
     ```json
     {
       "standard_box": {
@@ -180,7 +177,7 @@ async def update_region_pricing(
     }
     ```
 
-    3. Обновить скидки:
+    3. Update discounts:
     ```json
     {
       "discount": {
@@ -190,9 +187,8 @@ async def update_region_pricing(
     }
     ```
 
-    Возвращает обновленные параметры расчета.
+    Returns updated calculation parameters.
     """
-    # Get region with pricing
     query = (
         select(Region)
         .options(joinedload(Region.pricing))
@@ -216,18 +212,14 @@ async def update_region_pricing(
 
     pricing = region.pricing
 
-    # Update fields (only if provided)
     update_data = pricing_update.model_dump(exclude_unset=True)
 
-    # Update basic fields
     for field, value in update_data.items():
         if field == "standard_box" and value is not None:
-            # Update standard box fields
             for box_field, box_value in value.items():
                 if box_value is not None:
                     setattr(pricing, f"standard_box_{box_field}", box_value)
         elif field == "discount" and value is not None:
-            # Update discount fields
             discount_mapping = {
                 "min_points": "min_points_for_discount",
                 "step_points": "discount_step_points",
@@ -239,10 +231,8 @@ async def update_region_pricing(
                     db_field = discount_mapping[disc_field]
                     setattr(pricing, db_field, disc_value)
         elif field not in ["standard_box", "discount"] and value is not None:
-            # Update direct fields
             setattr(pricing, field, value)
 
-    # Save changes
     await db.commit()
     await db.refresh(pricing)
 
@@ -256,7 +246,6 @@ async def _get_region_stats(db: AsyncSession, region_id: int) -> RegionStatsResp
     Uses scalar subqueries to count all related entities in one database round-trip.
     Similar to Django's annotate(Count(...)).
     """
-    # Scalar subqueries for each count
     dc_count_subq = (
         select(func.count(DistributionCenter.id))
         .where(DistributionCenter.region_id == region_id)
@@ -275,7 +264,6 @@ async def _get_region_stats(db: AsyncSession, region_id: int) -> RegionStatsResp
         .scalar_subquery()
     )
 
-    # Single query with all counts as subqueries
     query = select(
         dc_count_subq.label('dc_count'),
         sectors_count_subq.label('sectors_count'),

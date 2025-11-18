@@ -6,7 +6,6 @@ from app.api.v1.endpoints import (calculator, countries, delivery_points,
 
 api_router = APIRouter(prefix="/v1")
 
-# Include all endpoint routers
 api_router.include_router(countries.router)
 api_router.include_router(regions.router)
 api_router.include_router(sectors.router)

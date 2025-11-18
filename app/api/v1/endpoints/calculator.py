@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
     status_code=status.HTTP_200_OK,
     summary="Calculate delivery cost by delivery points",
     description=(
-        "Рассчитать стоимость доставки на основе конкретных точек доставки. "
-        "Количество точек и секторов определяется автоматически из переданных ID."
+        "Calculate delivery cost based on specific delivery points. "
+        "The number of points and sectors is automatically determined from the provided IDs."
     ),
 )
 async def calculate_by_points(
@@ -33,13 +33,13 @@ async def calculate_by_points(
     """
     Calculate delivery costs using specific delivery points.
 
-    - **region_id**: ID региона
-    - **supplier_location**: Координаты поставщика (широта, долгота)
-    - **product**: Параметры товара (размеры, вес, количество в коробке)
-    - **delivery_point_ids**: Список ID точек доставки
+    - **region_id**: Region ID
+    - **supplier_location**: Supplier coordinates (latitude, longitude)
+    - **product**: Product parameters (dimensions, weight, quantity per box)
+    - **delivery_point_ids**: List of delivery point IDs
 
-    Возвращает стоимость доставки для товара поставщика и информацию о
-    количестве использованных/проигнорированных точек доставки.
+    Returns delivery cost for the supplier's product and information about
+    the number of used/ignored delivery points.
     """
     try:
         calculator = CalculatorService(db)
@@ -78,8 +78,8 @@ async def calculate_by_points(
     status_code=status.HTTP_200_OK,
     summary="Calculate delivery cost estimate",
     description=(
-        "Рассчитать приблизительную стоимость доставки на основе количества точек. "
-        "Если количество секторов не указано, используется максимум для региона."
+        "Calculate estimated delivery cost based on the number of points. "
+        "If the number of sectors is not specified, the maximum for the region is used."
     ),
 )
 async def calculate_estimate(
@@ -89,12 +89,12 @@ async def calculate_estimate(
     """
     Calculate delivery costs using estimated numbers.
 
-    - **region_id**: ID региона
-    - **supplier_location**: Координаты поставщика (широта, долгота)
-    - **product**: Параметры товара (размеры, вес, количество в коробке)
-    - **delivery**: Параметры доставки (количество точек, опционально количество секторов)
+    - **region_id**: Region ID
+    - **supplier_location**: Supplier coordinates (latitude, longitude)
+    - **product**: Product parameters (dimensions, weight, quantity per box)
+    - **delivery**: Delivery parameters (number of points, optionally number of sectors)
 
-    Возвращает стоимость доставки для товара поставщика.
+    Returns delivery cost for the supplier's product.
     """
     try:
         calculator = CalculatorService(db)

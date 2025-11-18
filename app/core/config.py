@@ -16,17 +16,16 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     # External APIs - Routing
-    # Yandex Router API (платный)
+    # Yandex Router API
     YANDEX_API_KEY: str | None = None
     YANDEX_ROUTER_API_URL: str = "https://api.routing.yandex.net/v2/route"
     YANDEX_API_TIMEOUT: int = 5
 
-    # OpenRouteService (бесплатный - 2000 запросов/день)
     OPENROUTESERVICE_API_KEY: str | None = None
     OPENROUTESERVICE_API_URL: str = "https://api.openrouteservice.org/v2/directions/driving-car"
     OPENROUTESERVICE_TIMEOUT: int = 5
 
-    # Какой провайдер использовать: 'yandex', 'openroute' или 'fallback'
+    # Which provider to use: 'yandex', 'openroute' or 'fallback'
     ROUTING_PROVIDER: str = "openroute"
 
     # Calculator settings

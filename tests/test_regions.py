@@ -106,15 +106,12 @@ def fake_region_pricing():
 @pytest.mark.asyncio
 async def test_get_regions_empty(mock_db_session):
     """Test getting regions when database is empty."""
-    # Setup mock to return empty list
     mock_result = MagicMock()
     mock_result.unique().scalars().all.return_value = []
     mock_db_session.execute.return_value = mock_result
 
-    # Call endpoint function
     result = await get_regions(db=mock_db_session)
 
-    # Assertions
     assert result == []
     assert mock_db_session.execute.called
 
@@ -122,15 +119,12 @@ async def test_get_regions_empty(mock_db_session):
 @pytest.mark.asyncio
 async def test_get_regions_returns_list(mock_db_session, fake_regions):
     """Test getting all regions returns list."""
-    # Setup mock to return fake regions
     mock_result = MagicMock()
     mock_result.unique().scalars().all.return_value = fake_regions
     mock_db_session.execute.return_value = mock_result
 
-    # Call endpoint function
     result = await get_regions(db=mock_db_session)
 
-    # Assertions
     assert len(result) == 2
     assert result[0].name == "Краснодарский край"
     assert result[0].type == RegionType.KRAI
@@ -142,15 +136,12 @@ async def test_get_regions_returns_list(mock_db_session, fake_regions):
 @pytest.mark.asyncio
 async def test_get_regions_with_country_filter(mock_db_session, fake_regions):
     """Test getting regions filtered by country_id."""
-    # Setup mock
     mock_result = MagicMock()
     mock_result.unique().scalars().all.return_value = fake_regions
     mock_db_session.execute.return_value = mock_result
 
-    # Call endpoint function with country filter
     result = await get_regions(db=mock_db_session, country_id=1)
 
-    # Assertions
     assert len(result) == 2
     assert mock_db_session.execute.called
 
@@ -160,30 +151,22 @@ async def test_get_region_by_id_success(
     mock_db_session, fake_region, fake_distribution_centers, fake_region_pricing
 ):
     """Test getting region by ID returns full information."""
-    # Setup region with relationships
     fake_region.distribution_centers = fake_distribution_centers
     fake_region.pricing = fake_region_pricing
 
-    # Setup mock for region query
     mock_region_result = MagicMock()
     mock_region_result.unique().scalar_one_or_none.return_value = fake_region
-
-    # Setup mock for stats query (single query with all counts)
     mock_stats_row = MagicMock()
     mock_stats_row.dc_count = 2
     mock_stats_row.sectors_count = 45
     mock_stats_row.settlements_count = 123
-
     mock_stats_result = MagicMock()
     mock_stats_result.one.return_value = mock_stats_row
 
-    # Two execute calls: first for region, second for stats
     mock_db_session.execute.side_effect = [mock_region_result, mock_stats_result]
 
-    # Call endpoint function
     result = await get_region(region_id=1, db=mock_db_session)
 
-    # Assertions
     assert result["id"] == 1
     assert result["name"] == "Краснодарский край"
     assert result["type"] == "край"
@@ -201,29 +184,21 @@ async def test_get_region_by_id_success(
 @pytest.mark.asyncio
 async def test_get_region_without_pricing(mock_db_session, fake_region):
     """Test getting region without pricing returns null for pricing."""
-    # Setup region without pricing
     fake_region.pricing = None
 
-    # Setup mock for region query
     mock_region_result = MagicMock()
     mock_region_result.unique().scalar_one_or_none.return_value = fake_region
-
-    # Setup mock for stats query (empty stats)
     mock_stats_row = MagicMock()
     mock_stats_row.dc_count = 0
     mock_stats_row.sectors_count = 0
     mock_stats_row.settlements_count = 0
-
     mock_stats_result = MagicMock()
     mock_stats_result.one.return_value = mock_stats_row
 
-    # Two execute calls
     mock_db_session.execute.side_effect = [mock_region_result, mock_stats_result]
 
-    # Call endpoint function
     result = await get_region(region_id=1, db=mock_db_session)
 
-    # Assertions
     assert result["pricing"] is None
     assert result["stats"].distribution_centers_count == 0
 
@@ -231,16 +206,13 @@ async def test_get_region_without_pricing(mock_db_session, fake_region):
 @pytest.mark.asyncio
 async def test_get_region_not_found(mock_db_session):
     """Test getting non-existent region raises HTTPException."""
-    # Setup mock to return None (region not found)
     mock_result = MagicMock()
     mock_result.unique().scalar_one_or_none.return_value = None
     mock_db_session.execute.return_value = mock_result
 
-    # Call endpoint function and expect exception
     with pytest.raises(HTTPException) as exc_info:
         await get_region(region_id=999, db=mock_db_session)
 
-    # Assertions
     assert exc_info.value.status_code == 404
     assert "not found" in exc_info.value.detail.lower()
     assert "999" in exc_info.value.detail
@@ -249,43 +221,35 @@ async def test_get_region_not_found(mock_db_session):
 @pytest.mark.asyncio
 async def test_get_region_stats(mock_db_session):
     """Test getting region statistics with single query."""
-    # Mock result with all counts in one row
     mock_row = MagicMock()
     mock_row.dc_count = 8
     mock_row.sectors_count = 45
     mock_row.settlements_count = 123
-
     mock_result = MagicMock()
     mock_result.one.return_value = mock_row
     mock_db_session.execute.return_value = mock_result
 
-    # Call helper function
     stats = await _get_region_stats(db=mock_db_session, region_id=1)
 
-    # Assertions
     assert stats.distribution_centers_count == 8
     assert stats.sectors_count == 45
     assert stats.settlements_count == 123
-    assert mock_db_session.execute.call_count == 1  # Only one query!
+    assert mock_db_session.execute.call_count == 1
 
 
 @pytest.mark.asyncio
 async def test_get_region_stats_empty(mock_db_session):
     """Test getting region statistics when region has no data."""
-    # Mock result with None counts (no data)
     mock_row = MagicMock()
     mock_row.dc_count = None
     mock_row.sectors_count = None
     mock_row.settlements_count = None
-
     mock_result = MagicMock()
     mock_result.one.return_value = mock_row
     mock_db_session.execute.return_value = mock_result
 
-    # Call helper function
     stats = await _get_region_stats(db=mock_db_session, region_id=1)
 
-    # Assertions - should default to 0
     assert stats.distribution_centers_count == 0
     assert stats.sectors_count == 0
     assert stats.settlements_count == 0
@@ -296,10 +260,8 @@ async def test_region_pricing_conversion(fake_region_pricing):
     """Test RegionPricing to RegionPricingResponse conversion."""
     from app.schemas.region import RegionPricingResponse
 
-    # Convert pricing model to response schema
     pricing_response = RegionPricingResponse.from_pricing_model(fake_region_pricing)
 
-    # Assertions
     assert pricing_response.driver_hourly_rate == Decimal("500.00")
     assert pricing_response.fuel_price_per_liter == Decimal("55.00")
     assert pricing_response.delivery_point_cost == Decimal("150.00")
