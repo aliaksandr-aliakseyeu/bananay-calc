@@ -1,118 +1,118 @@
 # 🍌 Bananay Delivery Calculator
 
-Калькулятор стоимости доставки от распределительных центров до точек доставки.
+Delivery cost calculator from distribution centers to delivery points.
 
-📚 **[Полная документация проекта →](PROJECT_OVERVIEW.md)**
+📚 **[Full project documentation →](PROJECT_OVERVIEW.md)**
 
-## Основные возможности
+## Key Features
 
-- 🗺 **Геопространственный поиск** точек доставки (PostGIS)
-- 🧮 **Калькулятор стоимости** с учетом реальных дорог
-- 📊 **Управление тарифами** по регионам
-- 🔍 **Autocomplete и fuzzy search** по точкам доставки
-- 🌐 **RESTful API** с автоматической документацией
+- 🗺 **Geospatial search** for delivery points (PostGIS)
+- 🧮 **Cost calculator** with real road distances
+- 📊 **Regional pricing management**
+- 🔍 **Autocomplete and fuzzy search** for delivery points
+- 🌐 **RESTful API** with automatic documentation
 
-## Технологии
+## Technologies
 
-- **FastAPI** - веб-фреймворк
-- **SQLAlchemy 2.0** - ORM с async поддержкой
-- **GeoAlchemy2** - расширение для работы с PostGIS
-- **PostgreSQL + PostGIS** - база данных с геоданными
-- **Poetry** - управление зависимостями
-- **Alembic** - миграции базы данных
-- **OpenRouteService API** - расчет реальных маршрутов
-- **Yandex Geocoder API** - геокодирование адресов
+- **FastAPI** - web framework
+- **SQLAlchemy 2.0** - ORM with async support
+- **GeoAlchemy2** - extension for PostGIS integration
+- **PostgreSQL + PostGIS** - database with geodata
+- **Poetry** - dependency management
+- **Alembic** - database migrations
+- **OpenRouteService API** - real route calculation
+- **Yandex Geocoder API** - address geocoding
 
-## Установка
+## Installation
 
-### 1. Установить зависимости
+### 1. Install dependencies
 
 ```bash
 poetry install
 ```
 
-### 2. Запустить PostgreSQL с PostGIS
+### 2. Start PostgreSQL with PostGIS
 
 ```bash
 docker-compose up -d
 ```
 
-### 3. Создать файл .env
+### 3. Create .env file
 
-Обязательные переменные:
+Required variables:
 
 ```env
 DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/bananay_calc
 
-# API ключи для расчета маршрутов (опционально)
+# API keys for route calculation (optional)
 OPENROUTESERVICE_API_KEY=your_key_here
-YANDEX_GEOCODER_API_KEY=your_key_here  # для геокодирования в скриптах
+YANDEX_GEOCODER_API_KEY=your_key_here  # for geocoding in scripts
 ```
 
-Пример:
+Example:
 
 ```bash
 cp .env.example .env
-# Отредактируйте .env и добавьте свои значения
+# Edit .env and add your values
 ```
 
-### 4. Применить миграции
+### 4. Apply migrations
 
 ```bash
 poetry run alembic upgrade head
 ```
 
-### 5. Импортировать данные
+### 5. Import data
 
-**Порядок выполнения важен!**
+**Execution order is important!**
 
 ```bash
-# 1. Распределительные центры (с геокодированием)
+# 1. Distribution centers (with geocoding)
 poetry run python scripts/seed_distribution_centers.py
 
-# 2. Секторы доставки из GeoJSON
+# 2. Delivery sectors from GeoJSON
 poetry run python scripts/import_sectors.py
 
-# 3. Точки доставки из Excel
+# 3. Delivery points from Excel
 poetry run python scripts/import_delivery_points.py
 ```
 
-### 6. Запустить API сервер
+### 6. Start API server
 
 ```bash
 poetry run uvicorn app.main:app --reload
 ```
 
-API будет доступно по адресу: **http://localhost:8000**
+API will be available at: **http://localhost:8000**
 
 - 📖 **Swagger UI:** http://localhost:8000/docs
 - 📘 **ReDoc:** http://localhost:8000/redoc
-- 📚 **Документация проекта:** http://localhost:8000/docs/overview
+- 📚 **Project documentation:** http://localhost:8000/docs/overview
 
-## Структура проекта
+## Project Structure
 
 ```
 bananay_calc/
 ├── app/
 │   ├── api/v1/        # API endpoints
-│   │   └── endpoints/ # Роуты по модулям
-│   ├── core/          # Конфигурация
-│   ├── db/            # База данных
-│   │   └── models/    # SQLAlchemy модели
-│   ├── schemas/       # Pydantic схемы
-│   ├── services/      # Бизнес-логика (калькулятор, расстояния)
-│   ├── utils/         # Утилиты
-│   └── main.py        # FastAPI приложение
-├── scripts/           # Скрипты импорта данных
-├── alembic/           # Миграции
-├── tests/             # Тесты
-├── PROJECT_OVERVIEW.md  # 📚 Полная документация
+│   │   └── endpoints/ # Routes by modules
+│   ├── core/          # Configuration
+│   ├── db/            # Database
+│   │   └── models/    # SQLAlchemy models
+│   ├── schemas/       # Pydantic schemas
+│   ├── services/      # Business logic (calculator, distances)
+│   ├── utils/         # Utilities
+│   └── main.py        # FastAPI application
+├── scripts/           # Data import scripts
+├── alembic/           # Migrations
+├── tests/             # Tests
+├── PROJECT_OVERVIEW.md  # 📚 Full documentation
 └── docker-compose.yml # PostgreSQL + PostGIS
 ```
 
-## 🚀 Примеры использования API
+## 🚀 API Usage Examples
 
-### Расчет стоимости доставки
+### Calculate delivery cost
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/calculator/by-points" \
@@ -133,7 +133,7 @@ curl -X POST "http://localhost:8000/api/v1/calculator/by-points" \
   }'
 ```
 
-### Поиск точек доставки
+### Search delivery points
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/delivery-points/search" \
@@ -145,26 +145,26 @@ curl -X POST "http://localhost:8000/api/v1/delivery-points/search" \
   }'
 ```
 
-Подробнее: **http://localhost:8000/docs**
+More details: **http://localhost:8000/docs**
 
-## Разработка
+## Development
 
-Активировать виртуальное окружение:
+Activate virtual environment:
 
 ```bash
 poetry shell
 ```
 
-Запустить тесты:
+Run tests:
 
 ```bash
 poetry run pytest
 ```
 
-## 📚 Документация
+## 📚 Documentation
 
-- [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) - полная документация проекта
+- [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) - full project documentation
 
 ---
 
-_Для получения полной информации о проекте смотрите [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)_
+_For complete project information see [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)_

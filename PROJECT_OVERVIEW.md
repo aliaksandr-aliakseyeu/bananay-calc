@@ -1,464 +1,464 @@
-# 🍌 Bananay Delivery Calculator - Обзор проекта
+# 🍌 Bananay Delivery Calculator - Project Overview
 
-## 📋 Содержание
+## 📋 Contents
 
-- [Технологии](#technologies)
-- [База данных и модели](#database-and-models)
-- [Скрипты импорта данных](#import-scripts)
+- [Technologies](#technologies)
+- [Database and Models](#database-and-models)
+- [Data Import Scripts](#import-scripts)
 - [API Endpoints](#api-endpoints)
-- [Работа с геоданными](#geodata)
-- [Архитектура и структура проекта](#architecture) _(в разработке)_
+- [Working with Geodata](#geodata)
+- [Architecture and Project Structure](#architecture) _(in development)_
 
 ---
 
-## 🛠 Технологии {#technologies}
+## 🛠 Technologies {#technologies}
 
 ### Backend Framework
-- **[FastAPI](https://fastapi.tiangolo.com/)** `0.115.0` - современный, высокопроизводительный веб-фреймворк для создания API
-  - Автоматическая генерация OpenAPI (Swagger) документации
-  - Автоматическая валидация запросов и ответов
-  - Async/await support из коробки
-  - Высокая производительность (на уровне NodeJS и Go)
+- **[FastAPI](https://fastapi.tiangolo.com/)** `0.115.0` - modern, high-performance web framework for building APIs
+  - Automatic OpenAPI (Swagger) documentation generation
+  - Automatic request and response validation
+  - Built-in async/await support
+  - High performance (comparable to NodeJS and Go)
 
-- **[Uvicorn](https://www.uvicorn.org/)** `0.32.0` - ASGI сервер для запуска FastAPI приложения
-  - Поддержка HTTP/1.1 и WebSockets
-  - Асинхронная обработка запросов
+- **[Uvicorn](https://www.uvicorn.org/)** `0.32.0` - ASGI server for running FastAPI applications
+  - HTTP/1.1 and WebSockets support
+  - Asynchronous request handling
 
-### База данных
-- **[PostgreSQL](https://www.postgresql.org/)** `16` - мощная реляционная СУБД
-- **[PostGIS](https://postgis.net/)** `3.4` - расширение для работы с геопространственными данными
-  - Хранение координат (точки, полигоны)
-  - Пространственные индексы для быстрого поиска
-  - Геометрические операции (расстояние, проверка вхождения в полигон)
-  - Используется образ `postgis/postgis:16-3.4`
+### Database
+- **[PostgreSQL](https://www.postgresql.org/)** `16` - powerful relational database
+- **[PostGIS](https://postgis.net/)** `3.4` - extension for working with geospatial data
+  - Storage of coordinates (points, polygons)
+  - Spatial indexes for fast search
+  - Geometric operations (distance, point-in-polygon checks)
+  - Uses `postgis/postgis:16-3.4` image
 
-### ORM и работа с БД
-- **[SQLAlchemy](https://www.sqlalchemy.org/)** `2.0.44` - ORM с поддержкой async/await
-  - Async режим через AsyncSession
-  - Декларативный стиль определения моделей
-  - Мощный query builder
+### ORM and Database Operations
+- **[SQLAlchemy](https://www.sqlalchemy.org/)** `2.0.44` - ORM with async/await support
+  - Async mode through AsyncSession
+  - Declarative model definition style
+  - Powerful query builder
 
-- **[GeoAlchemy2](https://geoalchemy-2.readthedocs.io/)** `0.18.0` - расширение SQLAlchemy для работы с PostGIS
-  - Интеграция PostGIS типов в SQLAlchemy модели
-  - Геометрические операции на уровне ORM
+- **[GeoAlchemy2](https://geoalchemy-2.readthedocs.io/)** `0.18.0` - SQLAlchemy extension for PostGIS
+  - Integration of PostGIS types into SQLAlchemy models
+  - Geometric operations at ORM level
 
-- **[Asyncpg](https://github.com/MagicStack/asyncpg)** `0.30.0` - асинхронный драйвер для PostgreSQL
-  - Самый быстрый драйвер для Python
-  - Нативная поддержка async/await
+- **[Asyncpg](https://github.com/MagicStack/asyncpg)** `0.30.0` - asynchronous PostgreSQL driver
+  - Fastest driver for Python
+  - Native async/await support
 
-- **[Psycopg2-binary](https://www.psycopg.org/)** `2.9.11` - синхронный драйвер для PostgreSQL
-  - Используется Alembic для миграций
+- **[Psycopg2-binary](https://www.psycopg.org/)** `2.9.11` - synchronous PostgreSQL driver
+  - Used by Alembic for migrations
 
-### Миграции БД
-- **[Alembic](https://alembic.sqlalchemy.org/)** `1.17.1` - инструмент для миграций базы данных
-  - Автогенерация миграций на основе изменений моделей
-  - История версий схемы БД
-  - Rollback возможности
+### Database Migrations
+- **[Alembic](https://alembic.sqlalchemy.org/)** `1.17.1` - database migration tool
+  - Auto-generation of migrations based on model changes
+  - Version history of database schema
+  - Rollback capabilities
 
-### Валидация данных
-- **[Pydantic](https://docs.pydantic.dev/)** `2.x` - валидация данных и настроек
-  - Автоматическая валидация входных/выходных данных
-  - Сериализация/десериализация JSON
-  - Type hints и IDE autocomplete
+### Data Validation
+- **[Pydantic](https://docs.pydantic.dev/)** `2.x` - data and settings validation
+  - Automatic input/output data validation
+  - JSON serialization/deserialization
+  - Type hints and IDE autocomplete
 
-- **[Pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/)** `2.12.0` - управление конфигурацией
-  - Загрузка настроек из .env файлов
-  - Валидация переменных окружения
+- **[Pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/)** `2.12.0` - configuration management
+  - Loading settings from .env files
+  - Environment variable validation
 
-### Работа с геоданными и внешними API
-- **[Shapely](https://shapely.readthedocs.io/)** `2.1.2` - библиотека для работы с геометрическими объектами
-  - Преобразование координат
-  - Геометрические операции
+### Geodata and External API Integration
+- **[Shapely](https://shapely.readthedocs.io/)** `2.1.2` - library for working with geometric objects
+  - Coordinate transformations
+  - Geometric operations
 
-- **[HTTPX](https://www.python-httpx.org/)** `0.27.0` - async HTTP клиент
-  - Используется для запросов к внешним API маршрутизации
-  - Поддержка timeout и retry
+- **[HTTPX](https://www.python-httpx.org/)** `0.27.0` - async HTTP client
+  - Used for requests to external routing APIs
+  - Timeout and retry support
 
-- **[OpenRouteService API](https://openrouteservice.org/)** - расчет реальных маршрутов между точками
-  - Бесплатный тариф: 2000 запросов/день
-  - Используется в калькуляторе для расчета расстояния от поставщика до РЦ
-  - Альтернатива Google Maps Directions API
+- **[OpenRouteService API](https://openrouteservice.org/)** - real route calculation between points
+  - Free tier: 2000 requests/day
+  - Used in calculator to compute distance from supplier to distribution center
+  - Alternative to Google Maps Directions API
 
-- **[Yandex Geocoder API](https://yandex.ru/dev/geocode/)** - геокодирование (адрес → координаты)
-  - Бесплатный тариф: до 1000 запросов/день
-  - Используется в скрипте `seed_distribution_centers.py` для получения координат распределительных центров по их адресам
-  - Точные координаты для адресов в России
+- **[Yandex Geocoder API](https://yandex.ru/dev/geocode/)** - geocoding (address → coordinates)
+  - Free tier: up to 1000 requests/day
+  - Used in `seed_distribution_centers.py` script to get distribution center coordinates from addresses
+  - Accurate coordinates for addresses in Russia
 
-- **[Yandex Router API](https://yandex.ru/dev/routing/)** - расчет маршрутов (опционально)
-  - Платный сервис
-  - Альтернатива OpenRouteService для расчета расстояний
-  - Более точные данные для дорог в России
+- **[Yandex Router API](https://yandex.ru/dev/routing/)** - route calculation (optional)
+  - Paid service
+  - Alternative to OpenRouteService for distance calculation
+  - More accurate data for roads in Russia
 
-### Работа с данными
-- **[OpenPyXL](https://openpyxl.readthedocs.io/)** `3.1.5` - чтение/запись Excel файлов
-  - Импорт точек доставки из Excel
-  - Парсинг адресов и координат
+### Data Processing
+- **[OpenPyXL](https://openpyxl.readthedocs.io/)** `3.1.5` - reading/writing Excel files
+  - Import delivery points from Excel
+  - Parsing addresses and coordinates
 
-- **[tqdm](https://github.com/tqdm/tqdm)** `4.67.1` - progress bar для скриптов импорта
-  - Визуализация прогресса загрузки данных
+- **[tqdm](https://github.com/tqdm/tqdm)** `4.67.1` - progress bar for import scripts
+  - Visualization of data loading progress
 
-### Инструменты разработки
-- **[Poetry](https://python-poetry.org/)** `2.0+` - управление зависимостями и виртуальным окружением
-  - Изоляция зависимостей проекта
-  - Lock файл для воспроизводимости окружения
+### Development Tools
+- **[Poetry](https://python-poetry.org/)** `2.0+` - dependency and virtual environment management
+  - Project dependency isolation
+  - Lock file for environment reproducibility
 
-- **[Python-dotenv](https://github.com/theskumar/python-dotenv)** `1.2.1` - загрузка .env файлов
+- **[Python-dotenv](https://github.com/theskumar/python-dotenv)** `1.2.1` - .env file loading
 
-### Тестирование
-- **[pytest](https://docs.pytest.org/)** `8.0.0` - фреймворк для тестирования
-- **[pytest-asyncio](https://github.com/pytest-dev/pytest-asyncio)** `0.24.0` - поддержка async тестов
-- **[pytest-cov](https://pytest-cov.readthedocs.io/)** `6.0.0` - покрытие кода тестами
+### Testing
+- **[pytest](https://docs.pytest.org/)** `8.0.0` - testing framework
+- **[pytest-asyncio](https://github.com/pytest-dev/pytest-asyncio)** `0.24.0` - async test support
+- **[pytest-cov](https://pytest-cov.readthedocs.io/)** `6.0.0` - code coverage
 
-### Контейнеризация
-- **[Docker](https://www.docker.com/)** - контейнеризация приложения
-- **[Docker Compose](https://docs.docker.com/compose/)** - оркестрация контейнеров
-  - PostgreSQL с PostGIS
-  - API приложение
-  - Изолированная сеть
+### Containerization
+- **[Docker](https://www.docker.com/)** - application containerization
+- **[Docker Compose](https://docs.docker.com/compose/)** - container orchestration
+  - PostgreSQL with PostGIS
+  - API application
+  - Isolated network
 
-### Дополнительные инструменты
-- **[geojson.io](https://geojson.io/)** - веб-инструмент для создания и редактирования GeoJSON
-  - Использовался для создания полигонов секторов доставки
-  - Визуальное рисование областей на карте
-  - Экспорт в формат GeoJSON
-  - **Файл с секторами:** [`сектора.json`](./сектора.json) - содержит все полигоны секторов доставки для Краснодарского края
+### Additional Tools
+- **[geojson.io](https://geojson.io/)** - web tool for creating and editing GeoJSON
+  - Used to create delivery sector polygons
+  - Visual drawing of areas on map
+  - Export to GeoJSON format
+  - **Sectors file:** [`сектора.json`](./сектора.json) - contains all delivery sector polygons for Krasnodar Region
 
-### Требования
+### Requirements
 - **Python** `>=3.11, <4.0`
-- **PostgreSQL** `16+` с расширением **PostGIS** `3.4+`
+- **PostgreSQL** `16+` with **PostGIS** `3.4+` extension
 
 ---
 
-## 🗂 Версии технологий
+## 🗂 Technology Versions
 
-| Технология | Версия | Назначение |
+| Technology | Version | Purpose |
 |-----------|--------|------------|
-| Python | 3.11+ | Язык программирования |
+| Python | 3.11+ | Programming language |
 | FastAPI | 0.115.0 | Web framework |
 | SQLAlchemy | 2.0.44 | ORM |
-| GeoAlchemy2 | 0.18.0 | PostGIS интеграция |
-| PostgreSQL | 16 | База данных |
-| PostGIS | 3.4 | Геопространственное расширение |
-| Alembic | 1.17.1 | Миграции БД |
-| Pydantic | 2.x | Валидация данных |
-| Uvicorn | 0.32.0 | ASGI сервер |
-| Docker | latest | Контейнеризация |
+| GeoAlchemy2 | 0.18.0 | PostGIS integration |
+| PostgreSQL | 16 | Database |
+| PostGIS | 3.4 | Geospatial extension |
+| Alembic | 1.17.1 | Database migrations |
+| Pydantic | 2.x | Data validation |
+| Uvicorn | 0.32.0 | ASGI server |
+| Docker | latest | Containerization |
 
 ---
 
-## 🗄 База данных и модели {#database-and-models}
+## 🗄 Database and Models {#database-and-models}
 
-### Обзор структуры БД
+### Database Structure Overview
 
-Проект использует **PostgreSQL 16** с расширением **PostGIS 3.4** для работы с геопространственными данными. База данных спроектирована для хранения информации о регионах, точках доставки, секторах, распределительных центрах и тарифах для расчета стоимости доставки.
+The project uses **PostgreSQL 16** with **PostGIS 3.4** extension for working with geospatial data. The database is designed to store information about regions, delivery points, sectors, distribution centers, and pricing for delivery cost calculation.
 
-### Схема базы данных
+### Database Schema
 
-#### 🌍 Географическая иерархия
+#### 🌍 Geographic Hierarchy
 
 ```
-countries (Страны)
+countries (Countries)
     ↓
-regions (Регионы/субъекты РФ)
+regions (Regions/federal subjects)
     ↓
-settlements (Населенные пункты)
+settlements (Settlements)
     ↓
-districts (Районы населенных пунктов) [опционально]
+districts (Settlement districts) [optional]
     ↓
-delivery_points (Точки доставки)
+delivery_points (Delivery points)
 ```
 
-#### 📊 Основные таблицы
+#### 📊 Main Tables
 
-##### 1️⃣ **countries** - Страны
-| Поле | Тип | Описание |
+##### 1️⃣ **countries** - Countries
+| Field | Type | Description |
 |------|-----|----------|
 | id | INTEGER | PRIMARY KEY |
-| name | VARCHAR(100) | Название страны (уникальное) |
-| code | VARCHAR(2) | ISO код страны (уникальное) |
+| name | VARCHAR(100) | Country name (unique) |
+| code | VARCHAR(2) | ISO country code (unique) |
 
-**Связи:**
+**Relationships:**
 - `1 → Many` regions
 
 ---
 
-##### 2️⃣ **regions** - Регионы (субъекты РФ)
-| Поле | Тип | Описание |
+##### 2️⃣ **regions** - Regions (federal subjects)
+| Field | Type | Description |
 |------|-----|----------|
 | id | INTEGER | PRIMARY KEY |
 | country_id | INTEGER | FK → countries.id |
-| name | VARCHAR(200) | Название региона |
-| type | ENUM | Тип региона (край, область, республика и т.д.) |
+| name | VARCHAR(200) | Region name |
+| type | ENUM | Region type (krai, oblast, republic, etc.) |
 
-**Связи:**
+**Relationships:**
 - `Many → 1` countries
 - `1 → Many` settlements
 - `1 → Many` sectors
 - `1 → Many` distribution_centers
-- `1 → 1` region_pricing (опционально)
+- `1 → 1` region_pricing (optional)
 
 **Enum RegionType:**
-- край
-- область
-- республика
-- автономная область
-- автономный округ
-- город федерального значения
+- край (krai)
+- область (oblast)
+- республика (republic)
+- автономная область (autonomous oblast)
+- автономный округ (autonomous okrug)
+- город федерального значения (federal city)
 
 ---
 
-##### 3️⃣ **region_pricing** - Тарифы и параметры расчета для региона
-| Поле | Тип | Описание |
+##### 3️⃣ **region_pricing** - Regional pricing and calculation parameters
+| Field | Type | Description |
 |------|-----|----------|
 | id | INTEGER | PRIMARY KEY |
 | region_id | INTEGER | FK → regions.id (UNIQUE) |
-| **Тарифы водителя** |
-| driver_hourly_rate | NUMERIC(10,2) | Стоимость 1 часа работы водителя, руб. |
-| planned_work_hours | NUMERIC(10,2) | Часов на выполнение работы по плану |
-| **Параметры транспорта** |
-| fuel_price_per_liter | NUMERIC(10,2) | Стоимость бензина, руб/л |
-| fuel_consumption_per_100km | NUMERIC(10,2) | Расход бензина, л/100км |
-| depreciation_coefficient | NUMERIC(10,4) | Коэффициент амортизации авто |
-| **Тарифы РЦ** |
-| warehouse_processing_per_kg | NUMERIC(10,2) | Стоимость обработки 1 кг на РЦ, руб. |
-| service_fee_per_kg | NUMERIC(10,2) | Сервисный сбор 1 кг (выручка компании), руб. |
-| delivery_point_cost | NUMERIC(10,2) | Стоимость одной точки доставки, руб. |
-| standard_trip_weight | NUMERIC(10,2) | Стандартный вес груза в рейсе, кг |
-| **Эталонная коробка** |
-| standard_box_length | INTEGER | Длина, см |
-| standard_box_width | INTEGER | Ширина, см |
-| standard_box_height | INTEGER | Высота, см |
-| standard_box_max_weight | NUMERIC(10,2) | Максимальный вес, кг |
-| **Параметры скидок** |
-| min_points_for_discount | INTEGER | Минимальное количество точек до применения скидки |
-| discount_step_points | INTEGER | Шаг прироста количества точек доставки |
-| initial_discount_percent | NUMERIC(5,2) | Стартовая скидка, % |
-| discount_step_percent | NUMERIC(5,2) | Шаг прироста скидки, % |
+| **Driver rates** |
+| driver_hourly_rate | NUMERIC(10,2) | Driver hourly cost, RUB |
+| planned_work_hours | NUMERIC(10,2) | Planned work hours |
+| **Transport parameters** |
+| fuel_price_per_liter | NUMERIC(10,2) | Fuel cost, RUB/L |
+| fuel_consumption_per_100km | NUMERIC(10,2) | Fuel consumption, L/100km |
+| depreciation_coefficient | NUMERIC(10,4) | Vehicle depreciation coefficient |
+| **Distribution center rates** |
+| warehouse_processing_per_kg | NUMERIC(10,2) | Processing cost per kg at DC, RUB |
+| service_fee_per_kg | NUMERIC(10,2) | Service fee per kg (company revenue), RUB |
+| delivery_point_cost | NUMERIC(10,2) | Cost per delivery point, RUB |
+| standard_trip_weight | NUMERIC(10,2) | Standard trip cargo weight, kg |
+| **Standard box** |
+| standard_box_length | INTEGER | Length, cm |
+| standard_box_width | INTEGER | Width, cm |
+| standard_box_height | INTEGER | Height, cm |
+| standard_box_max_weight | NUMERIC(10,2) | Maximum weight, kg |
+| **Discount parameters** |
+| min_points_for_discount | INTEGER | Minimum points before discount applies |
+| discount_step_points | INTEGER | Delivery point increment step |
+| initial_discount_percent | NUMERIC(5,2) | Initial discount, % |
+| discount_step_percent | NUMERIC(5,2) | Discount increment step, % |
 
-**Связи:**
+**Relationships:**
 - `1 → 1` regions
 
 ---
 
-##### 4️⃣ **settlements** - Населенные пункты
-| Поле | Тип | Описание |
+##### 4️⃣ **settlements** - Settlements
+| Field | Type | Description |
 |------|-----|----------|
 | id | INTEGER | PRIMARY KEY |
 | region_id | INTEGER | FK → regions.id |
-| name | VARCHAR(200) | Название населенного пункта |
-| type | ENUM | Тип (город, село, деревня и т.д.) |
-| postal_code | INTEGER | Почтовый индекс (опционально) |
-| location | POINT | PostGIS - координаты центра (опционально) |
+| name | VARCHAR(200) | Settlement name |
+| type | ENUM | Type (city, village, etc.) |
+| postal_code | INTEGER | Postal code (optional) |
+| location | POINT | PostGIS - center coordinates (optional) |
 
-**Связи:**
+**Relationships:**
 - `Many → 1` regions
 - `1 → Many` districts
 - `1 → Many` delivery_points
 
 **Enum SettlementType:**
-- город
-- пгт (поселок городского типа)
-- село
-- деревня
-- поселок
-- станица
-- хутор
-- аул
+- город (city)
+- пгт (urban-type settlement)
+- село (village)
+- деревня (hamlet)
+- поселок (settlement)
+- станица (stanitsa)
+- хутор (khutor)
+- аул (aul)
 
 ---
 
-##### 5️⃣ **districts** - Районы населенных пунктов
-| Поле | Тип | Описание |
+##### 5️⃣ **districts** - Settlement districts
+| Field | Type | Description |
 |------|-----|----------|
 | id | INTEGER | PRIMARY KEY |
 | settlement_id | INTEGER | FK → settlements.id |
-| name | VARCHAR(200) | Название района |
-| boundary | POLYGON | PostGIS - граница района (опционально) |
+| name | VARCHAR(200) | District name |
+| boundary | POLYGON | PostGIS - district boundary (optional) |
 
-**Связи:**
+**Relationships:**
 - `Many → 1` settlements
-- `1 → Many` delivery_points (опционально)
+- `1 → Many` delivery_points (optional)
 
 ---
 
-##### 6️⃣ **distribution_centers** - Распределительные центры (РЦ)
-| Поле | Тип | Описание |
+##### 6️⃣ **distribution_centers** - Distribution centers (DC)
+| Field | Type | Description |
 |------|-----|----------|
 | id | INTEGER | PRIMARY KEY |
 | region_id | INTEGER | FK → regions.id |
-| name | VARCHAR(200) | Название РЦ |
-| location | POINT | PostGIS - координаты РЦ (с пространственным индексом) |
-| address | TEXT | Адрес РЦ (опционально) |
-| is_active | BOOLEAN | Активен ли РЦ (по умолчанию true) |
+| name | VARCHAR(200) | DC name |
+| location | POINT | PostGIS - DC coordinates (with spatial index) |
+| address | TEXT | DC address (optional) |
+| is_active | BOOLEAN | Whether DC is active (default true) |
 
-**Связи:**
+**Relationships:**
 - `Many → 1` regions
 
-**Использование:**
-- Калькулятор находит ближайший активный РЦ к поставщику
-- Расстояние до РЦ используется в расчете стоимости доставки
+**Usage:**
+- Calculator finds nearest active DC to supplier
+- Distance to DC is used in delivery cost calculation
 
 ---
 
-##### 7️⃣ **sectors** - Секторы доставки
-| Поле | Тип | Описание |
+##### 7️⃣ **sectors** - Delivery sectors
+| Field | Type | Description |
 |------|-----|----------|
 | id | INTEGER | PRIMARY KEY |
 | region_id | INTEGER | FK → regions.id |
-| name | VARCHAR(200) | Название сектора (опционально) |
-| description | TEXT | Описание сектора (опционально) |
-| boundary | POLYGON | PostGIS - граница сектора (с пространственным индексом) |
+| name | VARCHAR(200) | Sector name (optional) |
+| description | TEXT | Sector description (optional) |
+| boundary | POLYGON | PostGIS - sector boundary (with spatial index) |
 
-**Связи:**
+**Relationships:**
 - `Many → 1` regions
 
-**Использование:**
-- Секторы используются для группировки точек доставки
-- Калькулятор проверяет попадание точек в секторы через `ST_Within`
-- Количество секторов влияет на итоговую стоимость доставки
+**Usage:**
+- Sectors are used for grouping delivery points
+- Calculator checks if points fall within sectors using `ST_Within`
+- Number of sectors affects final delivery cost
 
-**Создание секторов:**
-- Полигоны секторов созданы вручную через [geojson.io](https://geojson.io/)
-- Данные хранятся в файле [`сектора.json`](./сектора.json)
-- Импорт через скрипт `import_sectors.py`
+**Sector creation:**
+- Sector polygons created manually via [geojson.io](https://geojson.io/)
+- Data stored in [`сектора.json`](./сектора.json) file
+- Import via `import_sectors.py` script
 
 ---
 
-##### 8️⃣ **delivery_points** - Точки доставки
-| Поле | Тип | Описание |
+##### 8️⃣ **delivery_points** - Delivery points
+| Field | Type | Description |
 |------|-----|----------|
 | id | INTEGER | PRIMARY KEY |
-| name | VARCHAR(255) | Название точки доставки |
-| name_normalized | TEXT | Нормализованное название (для поиска) |
-| type | VARCHAR(100) | Тип точки (магазин, постамат и т.д.) |
-| title | TEXT | Заголовок / дополнительное описание |
+| name | VARCHAR(255) | Delivery point name |
+| name_normalized | TEXT | Normalized name (for search) |
+| type | VARCHAR(100) | Point type (store, pickup point, etc.) |
+| title | TEXT | Title / additional description |
 | settlement_id | INTEGER | FK → settlements.id |
-| district_id | INTEGER | FK → districts.id (опционально) |
-| address | TEXT | Адрес |
-| address_comment | TEXT | Комментарий к адресу |
-| landmark | VARCHAR(255) | Ориентир |
-| location | POINT | PostGIS - координаты (с пространственным индексом) |
-| category_id | INTEGER | FK → categories.id (опционально) |
-| subcategory_id | INTEGER | FK → subcategories.id (опционально) |
-| **Контакты (MVP - в основной таблице)** |
-| phone | TEXT | Телефон(ы) - может содержать несколько через запятую |
-| mobile | TEXT | Мобильный(е) - может содержать несколько через запятую |
-| email | TEXT | Email(ы) - может содержать несколько через запятую |
-| **Расписание (MVP - как текст)** |
-| schedule | TEXT | Расписание работы в текстовом формате |
-| **Служебные поля** |
-| is_active | BOOLEAN | Активна ли точка (по умолчанию true) |
-| created_at | TIMESTAMP | Дата создания (автоматически) |
-| updated_at | TIMESTAMP | Дата обновления (автоматически) |
+| district_id | INTEGER | FK → districts.id (optional) |
+| address | TEXT | Address |
+| address_comment | TEXT | Address comment |
+| landmark | VARCHAR(255) | Landmark |
+| location | POINT | PostGIS - coordinates (with spatial index) |
+| category_id | INTEGER | FK → categories.id (optional) |
+| subcategory_id | INTEGER | FK → subcategories.id (optional) |
+| **Contacts (MVP - in main table)** |
+| phone | TEXT | Phone number(s) - may contain multiple comma-separated |
+| mobile | TEXT | Mobile number(s) - may contain multiple comma-separated |
+| email | TEXT | Email(s) - may contain multiple comma-separated |
+| **Schedule (MVP - as text)** |
+| schedule | TEXT | Working hours in text format |
+| **Service fields** |
+| is_active | BOOLEAN | Whether point is active (default true) |
+| created_at | TIMESTAMP | Creation date (automatic) |
+| updated_at | TIMESTAMP | Update date (automatic) |
 
-**Связи:**
+**Relationships:**
 - `Many → 1` settlements
-- `Many → 1` districts (опционально)
-- `Many → 1` categories (опционально)
-- `Many → 1` subcategories (опционально)
-- `Many → Many` tags (через таблицу delivery_point_tags)
+- `Many → 1` districts (optional)
+- `Many → 1` categories (optional)
+- `Many → 1` subcategories (optional)
+- `Many → Many` tags (via delivery_point_tags table)
 
-**Индексы:**
-- name (для поиска)
-- name_normalized (для поиска с нормализацией)
-- location (пространственный индекс PostGIS)
+**Indexes:**
+- name (for search)
+- name_normalized (for normalized search)
+- location (PostGIS spatial index)
 - settlement_id, district_id
 
-**Поиск:**
-- Поддерживает autocomplete по названию (prefix search)
-- Fuzzy search с опечатками через `pg_trgm` (similarity)
-- Фильтрация по секторам через `ST_Within`
-- Фильтрация по bbox (ограничивающий прямоугольник)
-- Фильтрация по тегам
+**Search capabilities:**
+- Autocomplete by name (prefix search)
+- Fuzzy search with typos via `pg_trgm` (similarity)
+- Filter by sectors via `ST_Within`
+- Filter by bbox (bounding box)
+- Filter by tags
 
 ---
 
-##### 9️⃣ **categories** - Категории заведений
-| Поле | Тип | Описание |
+##### 9️⃣ **categories** - Establishment categories
+| Field | Type | Description |
 |------|-----|----------|
 | id | INTEGER | PRIMARY KEY |
-| name | VARCHAR(100) | Название категории (уникальное) |
-| slug | VARCHAR(100) | URL-friendly название (уникальное, автогенерация) |
+| name | VARCHAR(100) | Category name (unique) |
+| slug | VARCHAR(100) | URL-friendly name (unique, auto-generated) |
 
-**Связи:**
+**Relationships:**
 - `1 → Many` subcategories
 - `1 → Many` delivery_points
 
-**Примеры:** Продукты питания, Одежда и обувь, Электроника и т.д.
+**Examples:** Food products, Clothing and shoes, Electronics, etc.
 
 ---
 
-##### 🔟 **subcategories** - Подкатегории
-| Поле | Тип | Описание |
+##### 🔟 **subcategories** - Subcategories
+| Field | Type | Description |
 |------|-----|----------|
 | id | INTEGER | PRIMARY KEY |
 | category_id | INTEGER | FK → categories.id |
-| name | VARCHAR(100) | Название подкатегории |
-| slug | VARCHAR(100) | URL-friendly название (автогенерация) |
+| name | VARCHAR(100) | Subcategory name |
+| slug | VARCHAR(100) | URL-friendly name (auto-generated) |
 
-**Связи:**
+**Relationships:**
 - `Many → 1` categories
 - `1 → Many` delivery_points
 
 ---
 
-##### 1️⃣1️⃣ **tags** - Теги (рубрики)
-| Поле | Тип | Описание |
+##### 1️⃣1️⃣ **tags** - Tags (categories)
+| Field | Type | Description |
 |------|-----|----------|
 | id | INTEGER | PRIMARY KEY |
-| name | VARCHAR(100) | Название тега (уникальное) |
-| slug | VARCHAR(100) | URL-friendly название (уникальное, автогенерация) |
+| name | VARCHAR(100) | Tag name (unique) |
+| slug | VARCHAR(100) | URL-friendly name (unique, auto-generated) |
 
-**Связи:**
-- `Many → Many` delivery_points (через delivery_point_tags)
+**Relationships:**
+- `Many → Many` delivery_points (via delivery_point_tags)
 
-**Использование:**
-- Фильтрация точек доставки по тегам
-- Один тег может быть у многих точек доставки
-- Одна точка доставки может иметь несколько тегов
+**Usage:**
+- Filter delivery points by tags
+- One tag can belong to many delivery points
+- One delivery point can have multiple tags
 
 ---
 
-##### 1️⃣2️⃣ **delivery_point_tags** - Связь точек доставки и тегов
-| Поле | Тип | Описание |
+##### 1️⃣2️⃣ **delivery_point_tags** - Delivery point and tag relationship
+| Field | Type | Description |
 |------|-----|----------|
 | delivery_point_id | INTEGER | FK → delivery_points.id, PRIMARY KEY |
 | tag_id | INTEGER | FK → tags.id, PRIMARY KEY |
 
-**Тип связи:** Many-to-Many между delivery_points и tags
+**Relationship type:** Many-to-Many between delivery_points and tags
 
 ---
 
-##### 1️⃣3️⃣ **product_categories** - Категории товаров _(пока не используется)_
-| Поле | Тип | Описание |
+##### 1️⃣3️⃣ **product_categories** - Product categories _(not yet used)_
+| Field | Type | Description |
 |------|-----|----------|
 | id | INTEGER | PRIMARY KEY |
-| name | VARCHAR(100) | Название категории (уникальное) |
-| slug | VARCHAR(100) | URL-friendly название (уникальное, автогенерация) |
-| description | TEXT | Описание категории |
-| cost_multiplier | NUMERIC(5,2) | Множитель стоимости (пока не используется) |
+| name | VARCHAR(100) | Category name (unique) |
+| slug | VARCHAR(100) | URL-friendly name (unique, auto-generated) |
+| description | TEXT | Category description |
+| cost_multiplier | NUMERIC(5,2) | Cost multiplier (not yet used) |
 
-**Статус:** Таблица создана для будущего функционала, пока не используется в калькуляторе.
+**Status:** Table created for future functionality, not yet used in calculator.
 
 ---
 
-### 🔍 Особенности работы с геоданными
+### 🔍 Geodata Features
 
-#### PostGIS типы данных
-- **POINT** - для координат (точки доставки, РЦ, населенные пункты)
-- **POLYGON** - для границ (секторы, районы)
-- **SRID 4326** - система координат WGS84 (стандарт для GPS)
+#### PostGIS data types
+- **POINT** - for coordinates (delivery points, DCs, settlements)
+- **POLYGON** - for boundaries (sectors, districts)
+- **SRID 4326** - WGS84 coordinate system (GPS standard)
 
-#### Пространственные индексы
-Все геометрические поля (`location`, `boundary`) имеют пространственные индексы для быстрого выполнения запросов:
+#### Spatial indexes
+All geometric fields (`location`, `boundary`) have spatial indexes for fast query execution:
 ```sql
-ST_Within(point, polygon)  -- Проверка вхождения точки в полигон
-ST_Distance(point1, point2) -- Расчет расстояния
+ST_Within(point, polygon)  -- Check if point is within polygon
+ST_Distance(point1, point2) -- Calculate distance
 ```
 
-#### Пример использования в коде
+#### Code usage example
 ```python
-# Проверка попадания точки доставки в сектор
+# Check if delivery point falls within sector
 query = select(DeliveryPoint, Sector).join(
     Sector,
     func.ST_Within(DeliveryPoint.location, Sector.boundary)
@@ -467,189 +467,189 @@ query = select(DeliveryPoint, Sector).join(
 
 ---
 
-### ✅ Текущее состояние (MVP)
+### ✅ Current State (MVP)
 
-Реализованный функционал достаточен для MVP:
+Implemented functionality is sufficient for MVP:
 
-✅ **Полная географическая иерархия** - от страны до точки доставки  
-✅ **Тарифы и параметры расчета** - гибкая настройка для каждого региона  
-✅ **Секторы доставки** - группировка точек для расчета  
-✅ **Распределительные центры** - для расчета расстояния от поставщика  
-✅ **Мощный поиск точек доставки** - autocomplete, fuzzy search, геофильтры  
-✅ **Категоризация точек** - categories, subcategories, tags  
-✅ **Геопространственные запросы** - через PostGIS  
-✅ **Миграции БД** - через Alembic для версионирования схемы  
-
----
-
-### 🚀 Планируемые улучшения (Post-MVP)
-
-#### 1️⃣ **Контакты точек доставки**
-- Вынести в отдельную таблицу `delivery_point_contacts`
-- Поддержка разных типов контактов (phone, email, мессенджеры)
-- Отметка основного контакта
-
-#### 2️⃣ **Расписание работы**
-- Структурированное хранение в таблице `delivery_point_schedules`
-- Фильтр "открыто сейчас" и поиск по времени работы
-- Поддержка разного расписания по дням недели
-
-#### 3️⃣ **Категории товаров**
-- Использование `cost_multiplier` из таблицы `product_categories`
-- Разные тарифы для хрупких/габаритных/скоропортящихся товаров
-- Сезонные коэффициенты
-
-#### 4️⃣ **История изменений тарифов**
-- Таблица `region_pricing_history` для аудита изменений
-- Возможность отката к предыдущим значениям
-
-#### 5️⃣ **Кэширование расчетов**
-- Таблица `calculation_cache` для сохранения результатов
-- Экономия лимитов внешних API (OpenRouteService)
-- Ускорение повторяющихся запросов
-
-#### 6️⃣ **Аналитика**
-- Логи расчетов, статистика использования API
-- Анализ популярных маршрутов для оптимизации
+✅ **Complete geographic hierarchy** - from country to delivery point  
+✅ **Pricing and calculation parameters** - flexible configuration per region  
+✅ **Delivery sectors** - point grouping for calculations  
+✅ **Distribution centers** - for calculating distance from supplier  
+✅ **Powerful delivery point search** - autocomplete, fuzzy search, geo-filters  
+✅ **Point categorization** - categories, subcategories, tags  
+✅ **Geospatial queries** - via PostGIS  
+✅ **Database migrations** - via Alembic for schema versioning  
 
 ---
 
-### 📌 Заключение по БД
+### 🚀 Planned Improvements (Post-MVP)
 
-**Текущая схема БД полностью функциональна для MVP:**
-- ✅ Все необходимые данные для расчета стоимости доставки
-- ✅ Эффективная работа с геоданными через PostGIS
-- ✅ Гибкая система тарификации
-- ✅ Мощный поиск и фильтрация точек доставки
+#### 1️⃣ **Delivery point contacts**
+- Move to separate `delivery_point_contacts` table
+- Support for different contact types (phone, email, messengers)
+- Mark primary contact
 
-**Запланированные улучшения не блокируют запуск:**
-- 📊 Улучшат пользовательский опыт
-- 🚀 Добавят новые возможности фильтрации
-- 📈 Позволят собирать аналитику
-- 💰 Оптимизируют расходы на внешние API
+#### 2️⃣ **Working hours**
+- Structured storage in `delivery_point_schedules` table
+- "Open now" filter and search by working hours
+- Support for different schedules by day of week
+
+#### 3️⃣ **Product categories**
+- Use `cost_multiplier` from `product_categories` table
+- Different rates for fragile/bulky/perishable goods
+- Seasonal coefficients
+
+#### 4️⃣ **Pricing change history**
+- `region_pricing_history` table for audit trail
+- Ability to rollback to previous values
+
+#### 5️⃣ **Calculation caching**
+- `calculation_cache` table to store results
+- Save external API limits (OpenRouteService)
+- Speed up repeated queries
+
+#### 6️⃣ **Analytics**
+- Calculation logs, API usage statistics
+- Popular route analysis for optimization
 
 ---
 
-## 🔧 Скрипты импорта данных {#import-scripts}
+### 📌 Database Conclusion
 
-В директории `scripts/` находятся три скрипта для первоначальной загрузки данных в БД.
+**Current database schema is fully functional for MVP:**
+- ✅ All necessary data for delivery cost calculation
+- ✅ Efficient geodata operations via PostGIS
+- ✅ Flexible pricing system
+- ✅ Powerful delivery point search and filtering
 
-### 1️⃣ **import_delivery_points.py** - Импорт точек доставки из Excel
+**Planned improvements don't block launch:**
+- 📊 Will improve user experience
+- 🚀 Will add new filtering capabilities
+- 📈 Will enable analytics collection
+- 💰 Will optimize external API costs
 
-**Назначение:** Загрузка точек доставки из файла `sochi_address.xlsx` в базу данных.
+---
 
-**Функционал:**
-- Парсинг Excel файла с точками доставки
-- Автоматическое создание иерархии: населенные пункты → районы → точки доставки
-- Нормализация названий для поиска (lowercase, замена ё→е, удаление спецсимволов)
-- Создание и привязка тегов (рубрик)
-- Батчинг операций (по 100 записей) для производительности
-- Валидация координат и данных
-- Подробная статистика импорта с progress bar
+## 🔧 Data Import Scripts {#import-scripts}
 
-**Запуск:**
+The `scripts/` directory contains three scripts for initial data loading into the database.
+
+### 1️⃣ **import_delivery_points.py** - Import delivery points from Excel
+
+**Purpose:** Load delivery points from `sochi_address.xlsx` file into the database.
+
+**Features:**
+- Parse Excel file with delivery points
+- Automatic hierarchy creation: settlements → districts → delivery points
+- Name normalization for search (lowercase, ё→е replacement, special character removal)
+- Tag creation and assignment (categories)
+- Batch operations (100 records per batch) for performance
+- Coordinate and data validation
+- Detailed import statistics with progress bar
+
+**Usage:**
 ```bash
 poetry run python scripts/import_delivery_points.py
-poetry run python scripts/import_delivery_points.py --debug  # Режим отладки
+poetry run python scripts/import_delivery_points.py --debug  # Debug mode
 ```
 
-**Результат:** ~5000 точек доставки для Краснодарского края (г. Сочи и окрестности)
+**Result:** ~5000 delivery points for Krasnodar Region (Sochi and surroundings)
 
 ---
 
-### 2️⃣ **import_sectors.py** - Импорт секторов доставки из GeoJSON
+### 2️⃣ **import_sectors.py** - Import delivery sectors from GeoJSON
 
-**Назначение:** Загрузка полигонов секторов доставки из файла `сектора.json`.
+**Purpose:** Load delivery sector polygons from `сектора.json` file.
 
-**Функционал:**
-- Чтение GeoJSON FeatureCollection
-- Преобразование Shapely геометрии в PostGIS POLYGON
-- Привязка секторов к региону (Краснодарский край)
-- Валидация геометрии полигонов
-- Создание пространственных индексов
+**Features:**
+- Read GeoJSON FeatureCollection
+- Convert Shapely geometry to PostGIS POLYGON
+- Link sectors to region (Krasnodar Region)
+- Validate polygon geometry
+- Create spatial indexes
 
-**Запуск:**
+**Usage:**
 ```bash
 poetry run python scripts/import_sectors.py
 ```
 
-**Источник данных:** Полигоны созданы вручную через [geojson.io](https://geojson.io/), сохранены в [`сектора.json`](./сектора.json)
+**Data source:** Polygons created manually via [geojson.io](https://geojson.io/), saved in [`сектора.json`](./сектора.json)
 
-**Результат:** ~45 секторов доставки для расчета стоимости
+**Result:** ~45 delivery sectors for cost calculation
 
 ---
 
-### 3️⃣ **seed_distribution_centers.py** - Добавление распределительных центров
+### 3️⃣ **seed_distribution_centers.py** - Add distribution centers
 
-**Назначение:** Создание РЦ (распределительных центров) с автоматическим получением координат по адресам.
+**Purpose:** Create distribution centers (DCs) with automatic coordinate retrieval from addresses.
 
-**Функционал:**
-- Геокодирование адресов через **Yandex Geocoder API**
-- Получение точных координат РЦ
-- Привязка к региону
-- Проверка дубликатов перед добавлением
-- Возможность пропуска существующих записей
+**Features:**
+- Address geocoding via **Yandex Geocoder API**
+- Get precise DC coordinates
+- Link to region
+- Check for duplicates before adding
+- Ability to skip existing records
 
-**Требования:**
-- API ключ Яндекса в `.env`: `YANDEX_API_KEY`
-- Бесплатный тариф: до 1000 запросов/день
+**Requirements:**
+- Yandex API key in `.env`: `YANDEX_API_KEY`
+- Free tier: up to 1000 requests/day
 
-**Запуск:**
+**Usage:**
 ```bash
 poetry run python scripts/seed_distribution_centers.py
 ```
 
-**Данные:** 8 РЦ для Краснодарского края (Адлерский, Хостинский, Центральный, Лазаревский районы)
+**Data:** 8 DCs for Krasnodar Region (Adler, Khosta, Central, Lazarevsky districts)
 
 ---
 
-### 📝 Порядок запуска скриптов
+### 📝 Script Execution Order
 
 ```bash
-# 1. Применить миграции
+# 1. Apply migrations
 poetry run alembic upgrade head
 
-# 2. Добавить распределительные центры
+# 2. Add distribution centers
 poetry run python scripts/seed_distribution_centers.py
 
-# 3. Импортировать секторы
+# 3. Import sectors
 poetry run python scripts/import_sectors.py
 
-# 4. Импортировать точки доставки
+# 4. Import delivery points
 poetry run python scripts/import_delivery_points.py
 ```
 
-**Примечание:** Скрипты идемпотентны - можно запускать несколько раз, дубликаты не создадутся.
+**Note:** Scripts are idempotent - can be run multiple times, no duplicates will be created.
 
 ---
 
 ## 🌐 API Endpoints {#api-endpoints}
 
-API доступно по адресу `/api/v1/` и автоматически документируется через **OpenAPI (Swagger)**.
+API is available at `/api/v1/` and automatically documented via **OpenAPI (Swagger)**.
 
-**Документация:** 
+**Documentation:** 
 - Swagger UI: `/docs`
 - ReDoc: `/redoc`
-- 📚 Эта документация в HTML: `/docs/overview` (открывается как красивая страница в браузере)
+- 📚 This documentation in HTML: `/docs/overview` (opens as a beautiful page in browser)
 
-### 📍 Структура API
+### 📍 API Structure
 
 ```
 /api/v1/
-  ├── /countries          # Страны
-  ├── /regions            # Регионы
-  ├── /sectors            # Секторы доставки
-  ├── /delivery-points    # Точки доставки
-  ├── /tags               # Теги (рубрики)
-  └── /calculator         # Калькулятор стоимости доставки
+  ├── /countries          # Countries
+  ├── /regions            # Regions
+  ├── /sectors            # Delivery sectors
+  ├── /delivery-points    # Delivery points
+  ├── /tags               # Tags (categories)
+  └── /calculator         # Delivery cost calculator
 ```
 
 ---
 
-### 1️⃣ Countries - Страны
+### 1️⃣ Countries
 
 #### `GET /api/v1/countries`
-Получить список всех стран.
+Get list of all countries.
 
 **Response:** `200 OK`
 ```json
@@ -663,19 +663,19 @@ API доступно по адресу `/api/v1/` и автоматически 
 ```
 
 #### `GET /api/v1/countries/{country_id}`
-Получить страну по ID.
+Get country by ID.
 
-**Response:** `200 OK` или `404 Not Found`
+**Response:** `200 OK` or `404 Not Found`
 
 ---
 
-### 2️⃣ Regions - Регионы
+### 2️⃣ Regions
 
 #### `GET /api/v1/regions`
-Получить список всех регионов.
+Get list of all regions.
 
 **Query Parameters:**
-- `country_id` (optional) - фильтр по стране
+- `country_id` (optional) - filter by country
 
 **Response:** `200 OK`
 ```json
@@ -694,17 +694,17 @@ API доступно по адресу `/api/v1/` и автоматически 
 ```
 
 #### `GET /api/v1/regions/{region_id}`
-Получить детальную информацию о регионе.
+Get detailed region information.
 
-**Response:** Полная информация включая РЦ, тарифы и статистику
+**Response:** Full information including DCs, pricing, and statistics
 
 #### `GET /api/v1/regions/{region_id}/pricing`
-Получить тарифы и параметры расчета для региона.
+Get pricing and calculation parameters for region.
 
-**Response:** Все параметры из таблицы `region_pricing`
+**Response:** All parameters from `region_pricing` table
 
 #### `PATCH /api/v1/regions/{region_id}/pricing`
-Обновить тарифы (частичное обновление).
+Update pricing (partial update).
 
 **Body Example:**
 ```json
@@ -716,13 +716,13 @@ API доступно по адресу `/api/v1/` и автоматически 
 
 ---
 
-### 3️⃣ Sectors - Секторы доставки
+### 3️⃣ Sectors - Delivery sectors
 
 #### `GET /api/v1/sectors?region_id={id}`
-Получить все секторы региона с границами в GeoJSON формате.
+Get all region sectors with boundaries in GeoJSON format.
 
 **Query Parameters:**
-- `region_id` (required) - ID региона
+- `region_id` (required) - Region ID
 
 **Response:** `200 OK`
 ```json
@@ -742,10 +742,10 @@ API доступно по адресу `/api/v1/` и автоматически 
 
 ---
 
-### 4️⃣ Delivery Points - Точки доставки
+### 4️⃣ Delivery Points
 
 #### `POST /api/v1/delivery-points/search`
-Мощный поиск точек доставки с фильтрами.
+Powerful delivery point search with filters.
 
 **Body:**
 ```json
@@ -764,21 +764,21 @@ API доступно по адресу `/api/v1/` и автоматически 
 }
 ```
 
-**Возможности поиска:**
-- ✅ **Autocomplete** по названию (min 3 символа)
-- ✅ **Fuzzy search** с опечатками (от 5 символов, через pg_trgm)
-- ✅ **Геофильтры**: bbox, только в секторах
-- ✅ **Фильтр по тегам** (OR логика)
-- ✅ Нормализация текста (lowercase, ё→е, удаление спецсимволов)
+**Search capabilities:**
+- ✅ **Autocomplete** by name (min 3 characters)
+- ✅ **Fuzzy search** with typos (from 5 characters, via pg_trgm)
+- ✅ **Geo-filters**: bbox, only in sectors
+- ✅ **Filter by tags** (OR logic)
+- ✅ Text normalization (lowercase, ё→е, special character removal)
 
-**Response:** Массив точек доставки с координатами в GeoJSON
+**Response:** Array of delivery points with coordinates in GeoJSON
 
 ---
 
-### 5️⃣ Tags - Теги (рубрики)
+### 5️⃣ Tags
 
 #### `GET /api/v1/tags`
-Получить все теги для фильтрации точек доставки.
+Get all tags for filtering delivery points.
 
 **Response:**
 ```json
@@ -793,16 +793,16 @@ API доступно по адресу `/api/v1/` и автоматически 
 
 ---
 
-### 6️⃣ Calculator - Калькулятор стоимости доставки 🧮
+### 6️⃣ Calculator - Delivery Cost Calculator 🧮
 
-Два режима работы: расчет по конкретным точкам или по примерному количеству.
+Two operation modes: calculation by specific points or by approximate quantity.
 
 ---
 
 #### `POST /api/v1/calculator/by-points`
-**Расчет стоимости по конкретным точкам доставки**
+**Calculate cost for specific delivery points**
 
-Калькулятор автоматически определяет количество точек и секторов из переданных ID.
+Calculator automatically determines number of points and sectors from provided IDs.
 
 **Request Body:**
 ```json
@@ -837,16 +837,16 @@ API доступно по адресу `/api/v1/` и автоматически 
 }
 ```
 
-**Игнорирование точек:**
-- Точки вне секторов региона (не попадают в полигоны)
-- Неактивные точки (`is_active = false`)
+**Ignored points:**
+- Points outside region sectors (not within polygons)
+- Inactive points (`is_active = false`)
 
 ---
 
 #### `POST /api/v1/calculator/estimate`
-**Расчет приблизительной стоимости по количеству точек**
+**Calculate approximate cost by point quantity**
 
-Для предварительной оценки, когда конкретные точки еще не выбраны.
+For preliminary estimation when specific points haven't been selected yet.
 
 **Request Body:**
 ```json
@@ -870,9 +870,9 @@ API доступно по адресу `/api/v1/` и автоматически 
 }
 ```
 
-**Параметр `num_sectors`:**
-- Если не указан → используется максимальное количество секторов региона
-- Если указан → используется для расчета
+**`num_sectors` parameter:**
+- If not specified → uses maximum number of sectors in region
+- If specified → uses for calculation
 
 **Response:**
 ```json
@@ -887,79 +887,79 @@ API доступно по адресу `/api/v1/` и автоматически 
 
 ---
 
-### 📐 Бизнес-логика калькулятора
+### 📐 Calculator Business Logic
 
-#### Этап 1: Поиск ближайшего РЦ
+#### Stage 1: Find Nearest DC
 
-1. **Выбор кандидатов:**
-   - Берутся все активные РЦ (`is_active = true`)
-   - Рассчитывается прямое расстояние (по прямой) от поставщика до каждого РЦ через формулу **Haversine**
+1. **Select candidates:**
+   - Get all active DCs (`is_active = true`)
+   - Calculate straight-line distance from supplier to each DC using **Haversine** formula
 
-2. **Выбор топ-3 ближайших:**
-   - РЦ сортируются по прямому расстоянию
-   - Берутся 3 ближайших кандидата
+2. **Select top-3 nearest:**
+   - DCs are sorted by straight-line distance
+   - Take 3 nearest candidates
 
-3. **Расчет реального маршрута:**
-   - Для топ-3 запрашивается реальное дорожное расстояние через **OpenRouteService API**
-   - Если API недоступен → используется коэффициент: `прямое_расстояние × 1.4`
-   - Выбирается РЦ с минимальным дорожным расстоянием
+3. **Calculate real route:**
+   - For top-3, request real road distance via **OpenRouteService API**
+   - If API is unavailable → use coefficient: `straight_line_distance × 1.4`
+   - Select DC with minimum road distance
 
-**Результат:** Расстояние до РЦ (`distance_to_dc_km`) для расчета стоимости
-
----
-
-#### Этап 2: Определение точек и секторов
-
-**Для `/by-points`:**
-- Через PostGIS запрос `ST_Within` проверяется попадание каждой точки в любой сектор региона
-- Подсчитывается количество уникальных точек и секторов
-- Точки вне секторов игнорируются
-
-**Для `/estimate`:**
-- Используются переданные `num_points` и `num_sectors`
-- Если `num_sectors` не указан → берется `COUNT(*)` из таблицы `sectors`
+**Result:** Distance to DC (`distance_to_dc_km`) for cost calculation
 
 ---
 
-#### Этап 3: Расчет стоимости рейса
+#### Stage 2: Determine Points and Sectors
 
-Все расчеты основаны на тарифах из таблицы `region_pricing`.
+**For `/by-points`:**
+- Via PostGIS query `ST_Within` check if each point falls within any sector of the region
+- Count unique points and sectors
+- Points outside sectors are ignored
 
-##### 3.1 Стоимость водителя
+**For `/estimate`:**
+- Use provided `num_points` and `num_sectors`
+- If `num_sectors` not specified → take `COUNT(*)` from `sectors` table
+
+---
+
+#### Stage 3: Calculate Trip Cost
+
+All calculations are based on pricing from `region_pricing` table.
+
+##### 3.1 Driver cost
 ```
 driver_cost = planned_work_hours × driver_hourly_rate
 ```
 
-##### 3.2 Выручка компании
+##### 3.2 Company revenue
 ```
 company_revenue = service_fee_per_kg × standard_trip_weight
 ```
 
-##### 3.3 Расход топлива
+##### 3.3 Fuel consumption
 ```
 fuel_liters = (fuel_consumption_per_100km / 100) × (distance_to_dc_km × 2)
 fuel_cost = fuel_liters × fuel_price_per_liter
 ```
-_× 2 потому что туда и обратно_
+_× 2 because round trip_
 
-##### 3.4 Амортизация транспорта
+##### 3.4 Vehicle depreciation
 ```
 transport_cost = fuel_cost × depreciation_coefficient
 ```
 
-##### 3.5 Складская обработка на РЦ
+##### 3.5 Warehouse processing at DC
 ```
 warehouse_cost = warehouse_processing_per_kg × standard_trip_weight
 ```
 
-##### 3.6 Стоимость доставки (с учетом скидок)
+##### 3.6 Delivery cost (with discounts)
 
-**Если точек меньше минимума:**
+**If points less than minimum:**
 ```
 delivery_cost = num_sectors × delivery_point_cost × min_points_for_discount
 ```
 
-**Если точек достаточно для скидки:**
+**If enough points for discount:**
 ```
 discount_steps = (num_points - min_points_for_discount) / discount_step_points
 discount_percent = initial_discount_percent + (discount_steps × discount_step_percent)
@@ -968,13 +968,13 @@ base_cost = num_sectors × delivery_point_cost × min_points_for_discount
 delivery_cost = base_cost × (1 - discount_percent / 100)
 ```
 
-**Пример системы скидок:**
-- Минимум для скидки: 100 точек
-- Шаг прироста: 50 точек
-- Стартовая скидка: 5%
-- Шаг скидки: 5%
+**Discount system example:**
+- Minimum for discount: 100 points
+- Increment step: 50 points
+- Initial discount: 5%
+- Discount step: 5%
 
-| Точек | Скидка |
+| Points | Discount |
 |-------|--------|
 | < 100 | 0% |
 | 100-149 | 5% |
@@ -982,13 +982,13 @@ delivery_cost = base_cost × (1 - discount_percent / 100)
 | 200-249 | 15% |
 | 250+ | 20% |
 
-##### 3.7 Итоговая стоимость рейса
+##### 3.7 Total trip cost
 ```
 total_trip_cost = driver_cost + company_revenue + transport_cost + 
                   warehouse_cost + delivery_cost
 ```
 
-##### 3.8 Стоимость эталонной коробки
+##### 3.8 Standard box cost
 ```
 num_standard_boxes = standard_trip_weight / standard_box_max_weight
 standard_box_cost = total_trip_cost / num_standard_boxes
@@ -996,11 +996,11 @@ standard_box_cost = total_trip_cost / num_standard_boxes
 
 ---
 
-#### Этап 4: Расчет вместимости товара
+#### Stage 4: Calculate Product Capacity
 
-Определяем сколько товаров поставщика помещается в эталонную коробку.
+Determine how many supplier products fit in standard box.
 
-##### 4.1 По габаритам
+##### 4.1 By dimensions
 ```
 n_length = standard_box_length ÷ product.length_cm
 n_width = standard_box_width ÷ product.width_cm  
@@ -1008,82 +1008,82 @@ n_height = standard_box_height ÷ product.height_cm
 
 items_by_dimensions = n_length × n_width × n_height
 ```
-_Целочисленное деление_
+_Integer division_
 
-##### 4.2 По весу
+##### 4.2 By weight
 ```
 items_by_weight = standard_box_max_weight ÷ product.weight_kg
 ```
 
-##### 4.3 Итоговое количество
+##### 4.3 Final quantity
 ```
 items_in_standard_box = MIN(items_by_dimensions, items_by_weight)
 ```
-_Берется минимум из двух ограничений_
+_Take minimum of two constraints_
 
-**Пример:**
-- Эталонная коробка: 60×40×40 см, макс. 30 кг
-- Товар поставщика: 20×10×10 см, 1 кг
-- По размерам: (60÷20) × (40÷10) × (40÷10) = 3 × 4 × 4 = **48 шт**
-- По весу: 30 ÷ 1 = **30 шт**
-- **Итого: 30 шт** (ограничение по весу)
+**Example:**
+- Standard box: 60×40×40 cm, max 30 kg
+- Supplier product: 20×10×10 cm, 1 kg
+- By dimensions: (60÷20) × (40÷10) × (40÷10) = 3 × 4 × 4 = **48 pcs**
+- By weight: 30 ÷ 1 = **30 pcs**
+- **Total: 30 pcs** (weight constraint)
 
 ---
 
-#### Этап 5: Финальная стоимость
+#### Stage 5: Final Cost
 
-##### 5.1 Стоимость за единицу товара
+##### 5.1 Cost per item
 ```
 cost_per_item = standard_box_cost / items_in_standard_box
 ```
 
-##### 5.2 Стоимость за коробку поставщика
+##### 5.2 Cost per supplier box
 ```
 cost_per_supplier_box = cost_per_item × items_per_box
 ```
 
-Результаты округляются до 2 знаков после запятой.
+Results are rounded to 2 decimal places.
 
 ---
 
-### 🔑 Ключевые особенности калькулятора
+### 🔑 Key Calculator Features
 
-✅ **Учет реальных дорог** - через OpenRouteService API или коэффициент  
-✅ **Геопространственные запросы** - проверка точек в секторах через PostGIS  
-✅ **Система скидок** - прогрессивная шкала от количества точек  
-✅ **Двойное ограничение** - по весу И по габаритам  
-✅ **Валидация данных** - через Pydantic schemas  
-✅ **Обработка ошибок** - понятные сообщения об ошибках  
+✅ **Real road consideration** - via OpenRouteService API or coefficient  
+✅ **Geospatial queries** - check points in sectors via PostGIS  
+✅ **Discount system** - progressive scale based on number of points  
+✅ **Dual constraint** - by weight AND dimensions  
+✅ **Data validation** - via Pydantic schemas  
+✅ **Error handling** - clear error messages  
 
 ---
 
-## 🗺 Работа с геоданными {#geodata}
+## 🗺 Working with Geodata {#geodata}
 
-Проект активно использует геопространственные данные и функции PostGIS для работы с координатами, расстояниями и полигонами.
+The project actively uses geospatial data and PostGIS functions for working with coordinates, distances, and polygons.
 
-### 📍 Типы геоданных в проекте
+### 📍 Geodata Types in Project
 
-#### 1. **POINT** - Точки (координаты)
-Используется для хранения местоположения:
-- Точки доставки (`delivery_points.location`)
-- Распределительные центры (`distribution_centers.location`)
-- Центры населенных пунктов (`settlements.location`)
+#### 1. **POINT** - Points (coordinates)
+Used to store locations:
+- Delivery points (`delivery_points.location`)
+- Distribution centers (`distribution_centers.location`)
+- Settlement centers (`settlements.location`)
 
-**Формат:** Longitude (долгота), Latitude (широта)
+**Format:** Longitude, Latitude
 
-**Пример в SQL:**
+**SQL example:**
 ```sql
--- Создание точки
+-- Create point
 ST_SetSRID(ST_MakePoint(39.723098, 43.585472), 4326)
 ```
 
-**Пример в Python (Shapely):**
+**Python example (Shapely):**
 ```python
 from shapely.geometry import Point
 point = Point(39.723098, 43.585472)  # lon, lat
 ```
 
-**GeoJSON формат:**
+**GeoJSON format:**
 ```json
 {
   "type": "Point",
@@ -1093,21 +1093,21 @@ point = Point(39.723098, 43.585472)  # lon, lat
 
 ---
 
-#### 2. **POLYGON** - Полигоны (области)
-Используется для хранения границ:
-- Секторы доставки (`sectors.boundary`)
-- Районы населенных пунктов (`districts.boundary`)
+#### 2. **POLYGON** - Polygons (areas)
+Used to store boundaries:
+- Delivery sectors (`sectors.boundary`)
+- Settlement districts (`districts.boundary`)
 
-**Пример в SQL:**
+**SQL example:**
 ```sql
--- Создание полигона
+-- Create polygon
 ST_SetSRID(
   ST_GeomFromGeoJSON('{"type":"Polygon","coordinates":[[[39.7,43.5],[39.8,43.5],[39.8,43.6],[39.7,43.6],[39.7,43.5]]]}'),
   4326
 )
 ```
 
-**GeoJSON формат:**
+**GeoJSON format:**
 ```json
 {
   "type": "Polygon",
@@ -1125,29 +1125,29 @@ ST_SetSRID(
 
 ---
 
-### 🌐 Система координат: SRID 4326 (WGS84)
+### 🌐 Coordinate System: SRID 4326 (WGS84)
 
-**SRID 4326** = система координат **WGS84** - стандарт для GPS и веб-карт.
+**SRID 4326** = **WGS84** coordinate system - standard for GPS and web maps.
 
-**Характеристики:**
-- Используется GPS, Google Maps, OpenStreetMap
-- Координаты в градусах (широта: -90 до +90, долгота: -180 до +180)
-- Расстояния измеряются в градусах, а не метрах
+**Characteristics:**
+- Used by GPS, Google Maps, OpenStreetMap
+- Coordinates in degrees (latitude: -90 to +90, longitude: -180 to +180)
+- Distances measured in degrees, not meters
 
-**Почему 4326:**
-- ✅ Универсальность - работает для всего мира
-- ✅ Совместимость с большинством картографических сервисов
-- ✅ Простота получения данных из внешних источников
+**Why 4326:**
+- ✅ Universal - works worldwide
+- ✅ Compatible with most mapping services
+- ✅ Easy to obtain data from external sources
 
 ---
 
-### 🔍 Основные геопространственные функции PostGIS
+### 🔍 Main PostGIS Geospatial Functions
 
-#### 1. **ST_Within** - Проверка вхождения точки в полигон
+#### 1. **ST_Within** - Check if point is within polygon
 
-Используется для проверки попадания точек доставки в секторы.
+Used to check if delivery points fall within sectors.
 
-**SQL пример:**
+**SQL example:**
 ```sql
 SELECT dp.id, dp.name, s.name as sector_name
 FROM delivery_points dp
@@ -1165,17 +1165,17 @@ query = select(DeliveryPoint, Sector).join(
 ).where(Sector.region_id == 1)
 ```
 
-**Применение в проекте:**
-- Калькулятор проверяет какие точки попадают в секторы региона
-- Поиск точек доставки только внутри секторов
+**Usage in project:**
+- Calculator checks which points fall within region sectors
+- Search for delivery points only inside sectors
 
 ---
 
-#### 2. **ST_Distance** - Расстояние между точками
+#### 2. **ST_Distance** - Distance between points
 
-Рассчитывает расстояние между двумя точками в градусах.
+Calculates distance between two points in degrees.
 
-**SQL пример:**
+**SQL example:**
 ```sql
 SELECT 
     dc.name,
@@ -1188,11 +1188,11 @@ ORDER BY distance_degrees
 LIMIT 1;
 ```
 
-**⚠️ Важно:** `ST_Distance` в SRID 4326 возвращает расстояние в **градусах**, а не километрах!
+**⚠️ Important:** `ST_Distance` in SRID 4326 returns distance in **degrees**, not kilometers!
 
-**Для расстояния в метрах/километрах:**
+**For distance in meters/kilometers:**
 ```sql
--- Использовать ST_Distance с географией
+-- Use ST_Distance with geography
 SELECT 
     ST_Distance(
         geography(ST_SetSRID(ST_MakePoint(39.723098, 43.585472), 4326)),
@@ -1201,15 +1201,15 @@ SELECT
 FROM distribution_centers dc;
 ```
 
-**В проекте используется формула Haversine** (Python) для расчета прямого расстояния в км.
+**Project uses Haversine formula** (Python) to calculate straight-line distance in km.
 
 ---
 
-#### 3. **ST_MakeEnvelope** - Создание прямоугольника (Bounding Box)
+#### 3. **ST_MakeEnvelope** - Create bounding box
 
-Используется для фильтрации точек по ограничивающему прямоугольнику.
+Used to filter points by bounding rectangle.
 
-**SQL пример:**
+**SQL example:**
 ```sql
 SELECT dp.*
 FROM delivery_points dp
@@ -1234,15 +1234,15 @@ bbox_polygon = ST_MakeEnvelope(
 query = query.where(ST_Within(DeliveryPoint.location, bbox_polygon))
 ```
 
-**Применение:** Поиск точек доставки в видимой области карты.
+**Usage:** Search for delivery points in visible map area.
 
 ---
 
-#### 4. **ST_AsGeoJSON** - Конвертация в GeoJSON
+#### 4. **ST_AsGeoJSON** - Convert to GeoJSON
 
-Преобразует PostGIS геометрию в GeoJSON для отправки клиенту.
+Converts PostGIS geometry to GeoJSON for sending to client.
 
-**SQL пример:**
+**SQL example:**
 ```sql
 SELECT 
     id,
@@ -1261,7 +1261,7 @@ query = select(
     ST_AsGeoJSON(DeliveryPoint.location).label('location_geojson')
 )
 
-# В коде
+# In code
 import json
 location_data = json.loads(row.location_geojson)
 # {'type': 'Point', 'coordinates': [39.723098, 43.585472]}
@@ -1269,11 +1269,11 @@ location_data = json.loads(row.location_geojson)
 
 ---
 
-### ⚡ Пространственные индексы
+### ⚡ Spatial Indexes
 
-Все геометрические поля имеют **GIST индексы** для быстрых запросов.
+All geometric fields have **GIST indexes** for fast queries.
 
-**Автоматическое создание через GeoAlchemy2:**
+**Auto-creation via GeoAlchemy2:**
 ```python
 location: Mapped[str] = mapped_column(
     Geometry(geometry_type='POINT', srid=4326, spatial_index=True),
@@ -1281,35 +1281,35 @@ location: Mapped[str] = mapped_column(
 )
 ```
 
-**SQL эквивалент:**
+**SQL equivalent:**
 ```sql
 CREATE INDEX idx_delivery_points_location 
 ON delivery_points 
 USING GIST (location);
 ```
 
-**Преимущества:**
-- ✅ Быстрый поиск точек в радиусе
-- ✅ Эффективная проверка вхождения в полигон
-- ✅ Быстрая сортировка по расстоянию
+**Benefits:**
+- ✅ Fast point search within radius
+- ✅ Efficient point-in-polygon checks
+- ✅ Fast sorting by distance
 
-**Сложность без индекса:** O(n) - проверка всех записей  
-**Сложность с индексом:** O(log n) - бинарный поиск по дереву
+**Complexity without index:** O(n) - check all records  
+**Complexity with index:** O(log n) - binary tree search
 
 ---
 
-### 📏 Расчет расстояний в проекте
+### 📏 Distance Calculation in Project
 
-#### Метод 1: **Формула Haversine** (прямое расстояние)
+#### Method 1: **Haversine Formula** (straight-line distance)
 
-Рассчитывает расстояние "по прямой" между двумя точками на сфере (Земле).
+Calculates "as-the-crow-flies" distance between two points on sphere (Earth).
 
-**Реализация в Python:**
+**Python implementation:**
 ```python
 import math
 
 def haversine_distance(lat1, lon1, lat2, lon2):
-    """Расстояние в километрах."""
+    """Distance in kilometers."""
     lat1_rad = math.radians(lat1)
     lon1_rad = math.radians(lon1)
     lat2_rad = math.radians(lat2)
@@ -1323,66 +1323,66 @@ def haversine_distance(lat1, lon1, lat2, lon2):
          math.sin(dlon / 2) ** 2)
     c = 2 * math.asin(math.sqrt(a))
     
-    earth_radius = 6371.0  # км
+    earth_radius = 6371.0  # km
     return earth_radius * c
 ```
 
-**Использование:**
-- Быстрый предварительный отбор ближайших РЦ
-- Fallback если API маршрутизации недоступен
+**Usage:**
+- Fast preliminary selection of nearest DCs
+- Fallback if routing API is unavailable
 
 ---
 
-#### Метод 2: **OpenRouteService API** (дорожное расстояние)
+#### Method 2: **OpenRouteService API** (road distance)
 
-Рассчитывает реальное расстояние по дорогам.
+Calculates real distance along roads.
 
-**Особенности:**
-- ✅ Учитывает реальные дороги, повороты, ограничения
-- ✅ Точнее для расчета стоимости доставки
-- ❌ Требует интернет и API ключ
-- ❌ Лимиты запросов (2000/день бесплатно)
+**Features:**
+- ✅ Considers real roads, turns, restrictions
+- ✅ More accurate for delivery cost calculation
+- ❌ Requires internet and API key
+- ❌ Request limits (2000/day free)
 
-**Стратегия в проекте:**
-1. Haversine для выбора топ-3 ближайших РЦ
-2. OpenRouteService API только для топ-3
-3. Если API недоступен → коэффициент 1.4 к прямому расстоянию
+**Strategy in project:**
+1. Haversine to select top-3 nearest DCs
+2. OpenRouteService API only for top-3
+3. If API unavailable → coefficient 1.4 to straight-line distance
 
 ---
 
-### 🛠 Работа с геоданными в коде
+### 🛠 Working with Geodata in Code
 
-#### Создание точки из координат
+#### Create point from coordinates
 
 **Python (GeoAlchemy2):**
 ```python
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
 
-# Создание точки
+# Create point
 point = Point(39.723098, 43.585472)  # lon, lat
 
-# Конвертация для SQLAlchemy
+# Convert for SQLAlchemy
 from_shape(point, srid=4326)
 ```
 
-#### Извлечение координат из БД
+#### Extract coordinates from database
 
 **Python:**
 ```python
 from geoalchemy2.shape import to_shape
 
-# Из БД
+# From database
 delivery_point = await db.get(DeliveryPoint, 1)
 
-# Конвертация в Shapely
+# Convert to Shapely
 shape = to_shape(delivery_point.location)
 
 latitude = shape.y
 longitude = shape.x
 ```
 
-#### Создание полигона из GeoJSON
+#### Create polygon from GeoJSON
 
 **Python:**
 ```python
@@ -1390,34 +1390,34 @@ from shapely.geometry import shape as shapely_shape
 from geoalchemy2.shape import from_shape
 import json
 
-# GeoJSON данные
+# GeoJSON data
 geojson_data = {
     "type": "Polygon",
     "coordinates": [[[39.7, 43.5], [39.8, 43.5], [39.8, 43.6], [39.7, 43.5]]]
 }
 
-# Конвертация
+# Convert
 polygon = shapely_shape(geojson_data)
 geoalchemy_polygon = from_shape(polygon, srid=4326)
 
-# Сохранение в БД
+# Save to database
 sector = Sector(
     region_id=1,
-    name="Сектор 1",
+    name="Sector 1",
     boundary=geoalchemy_polygon
 )
 ```
 
 ---
 
-### 📊 Примеры использования в проекте
+### 📊 Usage Examples in Project
 
-#### 1. Поиск точек доставки в секторах
+#### 1. Find delivery points in sectors
 
 ```python
 from sqlalchemy import select, func, and_
 
-# Точки внутри секторов региона
+# Points inside region sectors
 query = select(DeliveryPoint, Sector).join(
     Sector,
     func.ST_Within(DeliveryPoint.location, Sector.boundary)
@@ -1431,7 +1431,7 @@ query = select(DeliveryPoint, Sector).join(
 result = await db.execute(query)
 ```
 
-#### 2. Поиск точек в bounding box
+#### 2. Find points in bounding box
 
 ```python
 from geoalchemy2.functions import ST_MakeEnvelope, ST_Within
@@ -1445,45 +1445,45 @@ query = select(DeliveryPoint).where(
 )
 ```
 
-#### 3. Поиск ближайшего РЦ
+#### 3. Find nearest DC
 
 ```python
-# 1. Быстрый отбор через Haversine
+# 1. Fast selection via Haversine
 dc_distances = []
 for dc in distribution_centers:
     dc_lat, dc_lon = extract_coordinates(dc.location)
     distance = haversine_distance(supplier_lat, supplier_lon, dc_lat, dc_lon)
     dc_distances.append((dc, distance))
 
-# Топ-3 ближайших
+# Top-3 nearest
 top_3 = sorted(dc_distances, key=lambda x: x[1])[:3]
 
-# 2. Точное расстояние через OpenRouteService API
+# 2. Accurate distance via OpenRouteService API
 for dc, _ in top_3:
     road_distance = await get_route_distance(supplier, dc)
 ```
 
 ---
 
-### 🎯 Преимущества использования PostGIS
+### 🎯 Benefits of Using PostGIS
 
-✅ **Производительность** - пространственные индексы ускоряют запросы в сотни раз  
-✅ **Точность** - профессиональные геопространственные алгоритмы  
-✅ **Стандартизация** - совместимость с GeoJSON, WKT, WKB  
-✅ **Расширяемость** - сотни функций для работы с геометрией  
-✅ **Интеграция** - работает внутри PostgreSQL, не нужны внешние сервисы  
+✅ **Performance** - spatial indexes speed up queries by hundreds of times  
+✅ **Accuracy** - professional geospatial algorithms  
+✅ **Standardization** - compatibility with GeoJSON, WKT, WKB  
+✅ **Extensibility** - hundreds of functions for working with geometry  
+✅ **Integration** - works inside PostgreSQL, no external services needed  
 
 ---
 
-### 🔗 Полезные ссылки
+### 🔗 Useful Links
 
 - [PostGIS Documentation](https://postgis.net/documentation/)
 - [GeoAlchemy2 Documentation](https://geoalchemy-2.readthedocs.io/)
 - [Shapely Documentation](https://shapely.readthedocs.io/)
 - [GeoJSON Specification](https://geojson.org/)
-- [geojson.io](https://geojson.io/) - визуальный редактор GeoJSON
+- [geojson.io](https://geojson.io/) - visual GeoJSON editor
 
 ---
 
-_Документация будет дополняться по мере развития проекта._
+_Documentation will be updated as the project develops._
 
