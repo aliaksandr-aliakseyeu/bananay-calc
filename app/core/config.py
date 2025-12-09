@@ -48,6 +48,7 @@ class Settings(BaseSettings):
         return (
             f"postgresql+asyncpg://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}"
             f"@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
+            f"?server_settings=search_path%3Dpublic"
         )
 
     @property
@@ -56,6 +57,7 @@ class Settings(BaseSettings):
         return (
             f"postgresql+psycopg2://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}"
             f"@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
+            f"?options=-csearch_path%3Dpublic"
         )
 
 
