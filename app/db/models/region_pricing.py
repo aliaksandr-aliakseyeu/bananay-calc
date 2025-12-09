@@ -16,11 +16,11 @@ if TYPE_CHECKING:
 class RegionPricing(Base):
     """Pricing and calculation parameters for region."""
 
-    __tablename__ = "region_pricing"
+    __tablename__ = "geo_region_pricing"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     region_id: Mapped[int] = mapped_column(
-        ForeignKey("regions.id"), unique=True, nullable=False, index=True
+        ForeignKey("geo_regions.id"), unique=True, nullable=False, index=True
     )
     driver_hourly_rate: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False,

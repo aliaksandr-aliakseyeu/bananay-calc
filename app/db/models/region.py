@@ -20,10 +20,10 @@ if TYPE_CHECKING:
 class Region(Base):
     """Region (subject of Russian Federation)."""
 
-    __tablename__ = "regions"
+    __tablename__ = "geo_regions"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False, index=True)
+    country_id: Mapped[int] = mapped_column(ForeignKey("geo_countries.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     type: Mapped[RegionType | None] = mapped_column(
         SQLEnum(RegionType, native_enum=False, length=50),

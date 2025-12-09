@@ -13,7 +13,7 @@ from app.utils.slugify import slugify
 class ProductCategory(Base):
     """Категория товара."""
 
-    __tablename__ = "product_categories"
+    __tablename__ = "geo_product_categories"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(

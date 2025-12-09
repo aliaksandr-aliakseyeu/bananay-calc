@@ -10,7 +10,7 @@ from app.utils.slugify import slugify
 class Category(Base):
     """Category (establishment category)."""
 
-    __tablename__ = "categories"
+    __tablename__ = "geo_categories"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
@@ -35,11 +35,11 @@ class Category(Base):
 class Subcategory(Base):
     """Subcategory."""
 
-    __tablename__ = "subcategories"
+    __tablename__ = "geo_subcategories"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     category_id: Mapped[int] = mapped_column(
-        ForeignKey("categories.id"),
+        ForeignKey("geo_categories.id"),
         nullable=False,
         index=True
     )
@@ -63,7 +63,7 @@ class Subcategory(Base):
 class Tag(Base):
     """Tag (category tag)."""
 
-    __tablename__ = "tags"
+    __tablename__ = "geo_tags"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)

@@ -16,17 +16,17 @@ if TYPE_CHECKING:
     from app.db.models.settlement import Settlement
 
 delivery_point_tags = Table(
-    "delivery_point_tags",
+    "geo_delivery_point_tags",
     Base.metadata,
-    Column("delivery_point_id", Integer, ForeignKey("delivery_points.id"), primary_key=True),
-    Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+    Column("delivery_point_id", Integer, ForeignKey("geo_delivery_points.id"), primary_key=True),
+    Column("tag_id", Integer, ForeignKey("geo_tags.id"), primary_key=True),
 )
 
 
 class DeliveryPoint(Base):
     """Delivery point."""
 
-    __tablename__ = "delivery_points"
+    __tablename__ = "geo_delivery_points"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -36,10 +36,10 @@ class DeliveryPoint(Base):
         Text, nullable=True, comment="Title (additional description)"
     )
     settlement_id: Mapped[int] = mapped_column(
-        ForeignKey("settlements.id"), nullable=False, index=True
+        ForeignKey("geo_settlements.id"), nullable=False, index=True
     )
     district_id: Mapped[int | None] = mapped_column(
-        ForeignKey("districts.id"), nullable=True, index=True
+        ForeignKey("geo_districts.id"), nullable=True, index=True
     )
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     address_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -49,10 +49,10 @@ class DeliveryPoint(Base):
         nullable=False
     )
     category_id: Mapped[int | None] = mapped_column(
-        ForeignKey("categories.id"), nullable=True, index=True
+        ForeignKey("geo_categories.id"), nullable=True, index=True
     )
     subcategory_id: Mapped[int | None] = mapped_column(
-        ForeignKey("subcategories.id"), nullable=True, index=True
+        ForeignKey("geo_subcategories.id"), nullable=True, index=True
     )
     # TODO: MVP - contacts in main table.
     # TODO: For production: move to separate DeliveryPointContact table (many-to-one)

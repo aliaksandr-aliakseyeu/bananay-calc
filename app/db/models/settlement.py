@@ -19,10 +19,10 @@ if TYPE_CHECKING:
 class Settlement(Base):
     """Населенный пункт."""
 
-    __tablename__ = "settlements"
+    __tablename__ = "geo_settlements"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    region_id: Mapped[int] = mapped_column(ForeignKey("regions.id"), nullable=False, index=True)
+    region_id: Mapped[int] = mapped_column(ForeignKey("geo_regions.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     type: Mapped[SettlementType | None] = mapped_column(
         SQLEnum(SettlementType, native_enum=False, length=50),

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class Country(Base):
     """Country."""
 
-    __tablename__ = "countries"
+    __tablename__ = "geo_countries"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)

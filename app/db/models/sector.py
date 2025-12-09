@@ -16,11 +16,11 @@ if TYPE_CHECKING:
 class Sector(Base):
     """Sector - custom area with coordinate polygon, bound to a region."""
 
-    __tablename__ = "sectors"
+    __tablename__ = "geo_sectors"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     region_id: Mapped[int] = mapped_column(
-        ForeignKey("regions.id"), nullable=False, index=True
+        ForeignKey("geo_regions.id"), nullable=False, index=True
     )
     name: Mapped[str | None] = mapped_column(
         String(200), nullable=True, index=True,

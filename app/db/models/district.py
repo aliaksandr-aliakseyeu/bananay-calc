@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 class District(Base):
     """Район населенного пункта (например, район города)."""
 
-    __tablename__ = "districts"
+    __tablename__ = "geo_districts"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     settlement_id: Mapped[int] = mapped_column(
-        ForeignKey("settlements.id"), nullable=False, index=True
+        ForeignKey("geo_settlements.id"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     boundary: Mapped[str | None] = mapped_column(

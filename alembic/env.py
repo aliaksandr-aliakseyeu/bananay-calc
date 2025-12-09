@@ -12,7 +12,6 @@ from alembic import context
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.core.config import settings
-
 # Import all models so Alembic can detect them
 # Импорт необходим, чтобы классы загрузились и зарегистрировались в Base.metadata
 from app.db import models  # noqa: F401 - импорт для side-effect
@@ -23,7 +22,8 @@ from app.db.base import Base
 config = context.config
 
 # Override sqlalchemy.url with our settings
-config.set_main_option("sqlalchemy.url", settings.database_url_sync)
+# Escape % for configparser (% is used for interpolation, so we need %%)
+config.set_main_option("sqlalchemy.url", settings.database_url_sync.replace('%', '%%'))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

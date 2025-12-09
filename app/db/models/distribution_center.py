@@ -16,11 +16,11 @@ if TYPE_CHECKING:
 class DistributionCenter(Base):
     """Распределительный центр (РЦ)."""
 
-    __tablename__ = "distribution_centers"
+    __tablename__ = "geo_distribution_centers"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     region_id: Mapped[int] = mapped_column(
-        ForeignKey("regions.id"), nullable=False, index=True
+        ForeignKey("geo_regions.id"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(
         String(200), nullable=False, index=True,
