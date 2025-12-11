@@ -6,8 +6,12 @@ from app.core.config import settings
 
 engine = create_async_engine(
     settings.database_url,
-    echo=False,  # Отключаем SQL логирование для чистого вывода
-    future=True
+    echo=False,
+    future=True,
+    # connect_args={
+    #     "statement_cache_size": 0,  # Disable prepared statements for Supabase/PgBouncer
+    #     "prepared_statement_cache_size": 0
+    # }
 )
 
 AsyncSessionLocal = async_sessionmaker(
