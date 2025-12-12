@@ -1,12 +1,43 @@
 """FastAPI application."""
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.db.base import engine
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan events."""
+    # Startup
+    logger.info("🚀 Application starting up...")
+    logger.info("📊 DB Pool configuration:")
+    logger.info(f"  - pool_size: {engine.pool.size()}")
+    logger.info(f"  - max_overflow: {engine.pool._max_overflow}")
+    logger.info(f"  - timeout: {engine.pool._timeout}")
+    logger.info(f"  - recycle: {engine.pool._recycle}")
+
+    yield
+
+    # Shutdown
+    logger.info("🛑 Application shutting down...")
+    logger.info("📊 Final pool stats:")
+    logger.info(f"  - checked out connections: {engine.pool.checkedout()}")
+
+    # Properly dispose of the engine
+    await engine.dispose()
+    logger.info("✅ Database connections closed")
+
 
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.APP_NAME,
     description=(
         "API for calculating delivery costs from distribution centers to delivery points\n\n"
@@ -51,6 +82,30 @@ async def health_check():
     return {"status": "healthy"}
 
 
+@app.get("/health/db-pool", tags=["Health"])
+async def db_pool_status():
+    """
+    Check database connection pool status.
+
+    Useful for debugging "max clients reached" errors.
+    """
+    pool = engine.pool
+    return {
+        "status": "ok",
+        "pool_size": pool.size(),
+        "checked_out": pool.checkedout(),
+        "overflow": pool.overflow(),
+        "checked_in": pool.size() - pool.checkedout(),
+        "max_overflow": pool._max_overflow,
+        "total_available": pool.size() + pool._max_overflow,
+        "recommendation": (
+            "⚠️ High usage - consider closing idle connections"
+            if pool.checkedout() > pool.size() * 0.8
+            else "✅ Pool usage is normal"
+        )
+    }
+
+
 @app.get("/docs/overview", tags=["Documentation"], response_class=HTMLResponse)
 async def get_project_overview():
     """
@@ -82,7 +137,7 @@ async def get_project_overview():
     markdown_content = doc_path.read_text(encoding="utf-8")
 
     # HTML template with GitHub-like styling
-    html_template = """
+    html_template = r"""
     <!DOCTYPE html>
     <html lang="ru">
     <head>

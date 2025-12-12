@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from geoalchemy2 import Geometry
-from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
-                        Table, Text, func)
+from sqlalchemy import (Boolean, Column, Computed, DateTime, ForeignKey,
+                        Integer, String, Table, Text, func)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -30,7 +30,15 @@ class DeliveryPoint(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    name_normalized: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    name_normalized: Mapped[str] = mapped_column(
+        Text,
+        Computed(
+            "trim(regexp_replace(regexp_replace(regexp_replace(lower(name), 'ё', 'е', 'g'), '[^а-яa-z0-9\\s]', ' ', 'g'), '\\s+', ' ', 'g'))",
+            persisted=True
+        ),
+        nullable=False,
+        index=True
+    )
     type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     title: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment="Title (additional description)"

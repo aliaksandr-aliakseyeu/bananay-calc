@@ -162,3 +162,99 @@ class DeliveryPointSearchResponse(BaseModel):
             ]
         }
     })
+
+
+class DeliveryPointCreate(BaseModel):
+    """Schema for creating a delivery point."""
+
+    settlement_id: int = Field(..., description="Settlement ID (required)")
+    name: str = Field(..., min_length=1, max_length=255, description="Name")
+    type: str | None = Field(None, max_length=100, description="Type (e.g., 'Магазин', 'ПВЗ')")
+    title: str | None = Field(None, description="Title / additional description")
+    district_id: int | None = Field(None, description="District ID")
+    address: str | None = Field(None, description="Address")
+    address_comment: str | None = Field(None, description="Address comment")
+    landmark: str | None = Field(None, max_length=255, description="Landmark")
+    location: GeoJSONPoint = Field(..., description="Coordinates in GeoJSON format")
+    category_id: int | None = Field(None, description="Category ID")
+    subcategory_id: int | None = Field(None, description="Subcategory ID")
+    phone: str | None = Field(None, description="Phone number(s)")
+    mobile: str | None = Field(None, description="Mobile number(s)")
+    email: str | None = Field(None, description="Email(s)")
+    schedule: str | None = Field(None, description="Working schedule")
+    is_active: bool = Field(True, description="Is delivery point active")
+    tag_ids: list[int] = Field(default_factory=list, description="Tag IDs to assign")
+
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "settlement_id": 1,
+            "name": "Новый ПВЗ Озон",
+            "type": "ПВЗ",
+            "title": "Озон на Ленина",
+            "address": "ул. Ленина, 42",
+            "location": {
+                "type": "Point",
+                "coordinates": [39.723098, 43.585472]
+            },
+            "phone": "+7 (999) 123-45-67",
+            "email": "pvz@example.com",
+            "schedule": "Пн-Вс: 09:00-21:00",
+            "is_active": True,
+            "tag_ids": [1, 2]
+        }
+    })
+
+
+class DeliveryPointUpdate(BaseModel):
+    """Schema for updating a delivery point. All fields are optional."""
+
+    settlement_id: int | None = Field(None, description="Settlement ID")
+    name: str | None = Field(None, min_length=1, max_length=255, description="Name")
+    type: str | None = Field(None, max_length=100, description="Type")
+    title: str | None = Field(None, description="Title / additional description")
+    district_id: int | None = Field(None, description="District ID")
+    address: str | None = Field(None, description="Address")
+    address_comment: str | None = Field(None, description="Address comment")
+    landmark: str | None = Field(None, max_length=255, description="Landmark")
+    location: GeoJSONPoint | None = Field(None, description="Coordinates in GeoJSON format")
+    category_id: int | None = Field(None, description="Category ID")
+    subcategory_id: int | None = Field(None, description="Subcategory ID")
+    phone: str | None = Field(None, description="Phone number(s)")
+    mobile: str | None = Field(None, description="Mobile number(s)")
+    email: str | None = Field(None, description="Email(s)")
+    schedule: str | None = Field(None, description="Working schedule")
+    is_active: bool | None = Field(None, description="Is delivery point active")
+    tag_ids: list[int] | None = Field(None, description="Tag IDs to assign (replaces existing)")
+
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "name": "Обновлённое название",
+            "address": "Новый адрес",
+            "is_active": False
+        }
+    })
+
+
+class DeliveryPointDetailResponse(BaseModel):
+    """Detailed delivery point response with all fields."""
+
+    id: int
+    name: str
+    type: str | None = None
+    title: str | None = None
+    settlement_id: int
+    district_id: int | None = None
+    address: str | None = None
+    address_comment: str | None = None
+    landmark: str | None = None
+    location: GeoJSONPoint
+    category_id: int | None = None
+    subcategory_id: int | None = None
+    phone: str | None = None
+    mobile: str | None = None
+    email: str | None = None
+    schedule: str | None = None
+    is_active: bool
+    tag_ids: list[int] = Field(default_factory=list, description="Assigned tag IDs")
+
+    model_config = ConfigDict(from_attributes=True)

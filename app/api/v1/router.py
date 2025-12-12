@@ -1,13 +1,22 @@
 """API v1 router."""
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import (calculator, countries, delivery_points,
-                                  distribution_centers, regions, sectors, tags)
+from app.api.v1.endpoints import (
+                                  calculator,
+                                  countries,
+                                  delivery_points,
+                                  distribution_centers,
+                                  regions,
+                                  sectors,
+                                  settlements,
+                                  tags,
+)
 
 api_router = APIRouter(prefix="/v1")
 
 api_router.include_router(countries.router)
 api_router.include_router(regions.router)
+api_router.include_router(settlements.router)
 api_router.include_router(sectors.router)
 api_router.include_router(delivery_points.router)
 api_router.include_router(distribution_centers.router)
