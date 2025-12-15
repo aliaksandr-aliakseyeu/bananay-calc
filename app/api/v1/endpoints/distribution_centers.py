@@ -1,55 +1,19 @@
 """Distribution Centers endpoints."""
 import json
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromGeoJSON
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
 from app.db.models import DistributionCenter
+from app.schemas.distribution_center import (DistributionCenterCreate,
+                                             DistributionCenterResponse,
+                                             DistributionCenterUpdate)
 
 router = APIRouter(prefix="/distribution-centers", tags=["Distribution Centers"])
-
-
-# === Pydantic Schemas ===
-
-class GeoJSONPoint(BaseModel):
-    """GeoJSON Point geometry."""
-    type: str = "Point"
-    coordinates: list[float]  # [longitude, latitude]
-
-
-class DistributionCenterCreate(BaseModel):
-    """Schema for creating a distribution center."""
-    region_id: int
-    name: str
-    address: Optional[str] = None
-    is_active: bool = True
-    location: GeoJSONPoint
-
-
-class DistributionCenterUpdate(BaseModel):
-    """Schema for updating a distribution center."""
-    name: Optional[str] = None
-    address: Optional[str] = None
-    is_active: Optional[bool] = None
-    location: Optional[GeoJSONPoint] = None
-
-
-class DistributionCenterResponse(BaseModel):
-    """Schema for distribution center response."""
-    id: int
-    region_id: int
-    name: str
-    address: Optional[str] = None
-    is_active: bool
-    location: Optional[GeoJSONPoint] = None
-
-    class Config:
-        from_attributes = True
 
 
 # === Helper Functions ===
@@ -68,9 +32,9 @@ def _row_to_dict(row) -> dict:
 
 
 async def _get_distribution_center_by_id(
-    db: AsyncSession, 
+    db: AsyncSession,
     dc_id: int
-) -> DistributionCenterResponse:
+) -> dict:
     """Get a distribution center by ID with location as GeoJSON."""
     query = select(
         DistributionCenter.id,
@@ -80,16 +44,16 @@ async def _get_distribution_center_by_id(
         DistributionCenter.is_active,
         ST_AsGeoJSON(DistributionCenter.location).label('location_geojson')
     ).where(DistributionCenter.id == dc_id)
-    
+
     result = await db.execute(query)
     row = result.first()
-    
+
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Distribution center with id {dc_id} not found"
         )
-    
+
     return _row_to_dict(row)
 
 
@@ -122,10 +86,10 @@ async def get_distribution_centers(
         DistributionCenter.is_active,
         ST_AsGeoJSON(DistributionCenter.location).label('location_geojson')
     ).where(DistributionCenter.region_id == region_id)
-    
+
     if not include_inactive:
         query = query.where(DistributionCenter.is_active == True)  # noqa: E712
-    
+
     query = query.order_by(DistributionCenter.name)
 
     result = await db.execute(query)
@@ -163,7 +127,7 @@ async def create_distribution_center(
     - **is_active**: Whether the center is active (default: true)
     """
     location_geojson = json.dumps(data.location.model_dump())
-    
+
     distribution_center = DistributionCenter(
         region_id=data.region_id,
         name=data.name,
@@ -171,11 +135,11 @@ async def create_distribution_center(
         is_active=data.is_active,
         location=ST_GeomFromGeoJSON(location_geojson),
     )
-    
+
     db.add(distribution_center)
     await db.flush()
     await db.commit()
-    
+
     return await _get_distribution_center_by_id(db, distribution_center.id)
 
 
@@ -194,25 +158,25 @@ async def update_distribution_center(
     query = select(DistributionCenter).where(DistributionCenter.id == dc_id)
     result = await db.execute(query)
     distribution_center = result.scalar_one_or_none()
-    
+
     if not distribution_center:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Distribution center with id {dc_id} not found"
         )
-    
+
     # Update fields
     update_data = data.model_dump(exclude_unset=True, exclude={'location'})
     for field, value in update_data.items():
         setattr(distribution_center, field, value)
-    
+
     # Update location if provided
     if data.location is not None:
         location_geojson = json.dumps(data.location.model_dump())
         distribution_center.location = ST_GeomFromGeoJSON(location_geojson)
-    
+
     await db.commit()
-    
+
     return await _get_distribution_center_by_id(db, dc_id)
 
 
@@ -227,12 +191,12 @@ async def delete_distribution_center(
     query = select(DistributionCenter).where(DistributionCenter.id == dc_id)
     result = await db.execute(query)
     distribution_center = result.scalar_one_or_none()
-    
+
     if not distribution_center:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Distribution center with id {dc_id} not found"
         )
-    
+
     await db.delete(distribution_center)
     await db.commit()
