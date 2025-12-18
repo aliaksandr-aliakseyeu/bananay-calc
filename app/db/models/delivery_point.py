@@ -33,7 +33,13 @@ class DeliveryPoint(Base):
     name_normalized: Mapped[str] = mapped_column(
         Text,
         Computed(
-            "trim(regexp_replace(regexp_replace(regexp_replace(lower(name), 'ё', 'е', 'g'), '[^а-яa-z0-9\\s]', ' ', 'g'), '\\s+', ' ', 'g'))",
+            (
+                "trim(regexp_replace("
+                "regexp_replace("
+                "regexp_replace(lower(name), 'ё', 'е', 'g'),"
+                " '[^а-яa-z0-9\\s]', ' ', 'g'),"
+                " '\\s+', ' ', 'g'))"
+            ),
             persisted=True
         ),
         nullable=False,

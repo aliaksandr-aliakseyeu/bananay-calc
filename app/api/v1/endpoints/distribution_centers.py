@@ -16,8 +16,6 @@ from app.schemas.distribution_center import (DistributionCenterCreate,
 router = APIRouter(prefix="/distribution-centers", tags=["Distribution Centers"])
 
 
-# === Helper Functions ===
-
 def _row_to_dict(row) -> dict:
     """Convert a database row to a dictionary."""
     location_data = json.loads(row.location_geojson) if row.location_geojson else None
@@ -34,7 +32,7 @@ def _row_to_dict(row) -> dict:
 async def _get_distribution_center_by_id(
     db: AsyncSession,
     dc_id: int
-) -> dict:
+) -> DistributionCenterResponse:
     """Get a distribution center by ID with location as GeoJSON."""
     query = select(
         DistributionCenter.id,
@@ -57,14 +55,12 @@ async def _get_distribution_center_by_id(
     return _row_to_dict(row)
 
 
-# === Endpoints ===
-
 @router.get("", response_model=list[DistributionCenterResponse])
 async def get_distribution_centers(
     db: Annotated[AsyncSession, Depends(get_db)],
     region_id: Annotated[int, Query(description="Region ID to filter distribution centers")],
     include_inactive: Annotated[bool, Query(description="Include inactive centers")] = False,
-) -> list[dict]:
+) -> list[DistributionCenterResponse]:
     """
     Get all distribution centers for a region.
 
@@ -113,7 +109,7 @@ async def get_distribution_center(
 async def create_distribution_center(
     data: DistributionCenterCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> dict:
+) -> DistributionCenterResponse:
     """
     Create a new distribution center.
 
@@ -148,13 +144,12 @@ async def update_distribution_center(
     dc_id: int,
     data: DistributionCenterUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> dict:
+) -> DistributionCenterResponse:
     """
     Update a distribution center.
 
     All fields are optional - only provided fields will be updated.
     """
-    # Get existing distribution center
     query = select(DistributionCenter).where(DistributionCenter.id == dc_id)
     result = await db.execute(query)
     distribution_center = result.scalar_one_or_none()
@@ -165,12 +160,10 @@ async def update_distribution_center(
             detail=f"Distribution center with id {dc_id} not found"
         )
 
-    # Update fields
     update_data = data.model_dump(exclude_unset=True, exclude={'location'})
     for field, value in update_data.items():
         setattr(distribution_center, field, value)
 
-    # Update location if provided
     if data.location is not None:
         location_geojson = json.dumps(data.location.model_dump())
         distribution_center.location = ST_GeomFromGeoJSON(location_geojson)

@@ -1,15 +1,10 @@
 """Delivery points endpoints."""
 import json
-import re
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from geoalchemy2.functions import (
-    ST_AsGeoJSON,
-    ST_GeomFromGeoJSON,
-    ST_MakeEnvelope,
-    ST_Within,
-)
+from geoalchemy2.functions import (ST_AsGeoJSON, ST_GeomFromGeoJSON,
+                                   ST_MakeEnvelope, ST_Within)
 from sqlalchemy import and_, case, delete, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,33 +12,14 @@ from app.core.config import settings
 from app.db.base import get_db
 from app.db.models import DeliveryPoint, Sector, Settlement, Tag
 from app.db.models.delivery_point import delivery_point_tags
-from app.schemas.delivery_point import (
-    DeliveryPointCreate,
-    DeliveryPointDetailResponse,
-    DeliveryPointSearchRequest,
-    DeliveryPointSearchResponse,
-    DeliveryPointUpdate,
-)
+from app.schemas.delivery_point import (DeliveryPointCreate,
+                                        DeliveryPointDetailResponse,
+                                        DeliveryPointSearchRequest,
+                                        DeliveryPointSearchResponse,
+                                        DeliveryPointUpdate)
+from app.utils import normalize_name
 
 router = APIRouter(prefix="/delivery-points", tags=["Delivery Points"])
-
-
-def normalize_name(name: str) -> str:
-    """
-    Normalize name for search.
-
-    Rules:
-    - Convert to lowercase
-    - Replace ё with е
-    - Remove all special characters (keep only letters, numbers, spaces)
-    - Collapse multiple spaces into one
-    - Trim spaces
-    """
-    normalized = name.lower()
-    normalized = normalized.replace('ё', 'е')
-    normalized = re.sub(r'[^а-яa-z0-9\s]', ' ', normalized)
-    normalized = re.sub(r'\s+', ' ', normalized)
-    return normalized.strip()
 
 
 @router.post("/search", response_model=DeliveryPointSearchResponse)
@@ -304,7 +280,6 @@ async def create_delivery_point(
 
     location_geojson = json.dumps(data.location.model_dump())
 
-    # Note: name_normalized is a generated column in PostgreSQL, don't set it
     delivery_point = DeliveryPoint(
         settlement_id=data.settlement_id,
         name=data.name,
@@ -377,7 +352,6 @@ async def update_delivery_point(
                 detail="One or more tag IDs are invalid"
             )
 
-    # Note: name_normalized is a generated column, exclude it
     update_data = data.model_dump(exclude_unset=True, exclude={'tag_ids', 'location'})
 
     if data.location is not None:

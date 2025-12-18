@@ -37,24 +37,28 @@ poetry install
 docker-compose up -d
 ```
 
-### 3. Create .env file
+### 3. Create `.env` file
 
 Required variables:
 
 ```env
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/bananay_calc
+# Database (used by app/core/config.py)
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_USER=postgres
+DATABASE_PASSWORD=postgres
+DATABASE_NAME=bananay_calc
 
-# API keys for route calculation (optional)
+# Routing provider: 'openroute' (default), 'yandex', or 'fallback'
+ROUTING_PROVIDER=openroute
+DISTANCE_FALLBACK_COEFFICIENT=1.4
+
+# API keys (optional)
 OPENROUTESERVICE_API_KEY=your_key_here
-YANDEX_GEOCODER_API_KEY=your_key_here  # for geocoding in scripts
+YANDEX_API_KEY=your_key_here
 ```
 
-Example:
-
-```bash
-cp .env.example .env
-# Edit .env and add your values
-```
+> Note: The repository currently does not include a `.env.example` file — create `.env` manually.
 
 ### 4. Apply migrations
 
@@ -88,6 +92,8 @@ API will be available at: **http://localhost:8000**
 - 📖 **Swagger UI:** http://localhost:8000/docs
 - 📘 **ReDoc:** http://localhost:8000/redoc
 - 📚 **Project documentation:** http://localhost:8000/docs/overview
+- ❤️ **Health:** http://localhost:8000/health
+- 🗄️ **DB pool status:** http://localhost:8000/health/db-pool
 
 ## Project Structure
 
@@ -145,6 +151,18 @@ curl -X POST "http://localhost:8000/api/v1/delivery-points/search" \
   }'
 ```
 
+### Get distribution centers for a region
+
+```bash
+curl "http://localhost:8000/api/v1/distribution-centers?region_id=1"
+```
+
+### Get settlements for a region
+
+```bash
+curl "http://localhost:8000/api/v1/settlements?region_id=1"
+```
+
 More details: **http://localhost:8000/docs**
 
 ## Development
@@ -161,9 +179,15 @@ Run tests:
 poetry run pytest
 ```
 
+## Docker quickstart
+
+If you prefer running everything via Docker Compose, see: **[API_QUICKSTART.md](API_QUICKSTART.md)**.
+
 ## 📚 Documentation
 
 - [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) - full project documentation
+- [API_QUICKSTART.md](API_QUICKSTART.md) - Docker-based quickstart and useful commands
+- [CALCULATOR_API.md](CALCULATOR_API.md) - calculator endpoint details
 
 ---
 

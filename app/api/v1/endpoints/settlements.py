@@ -3,7 +3,8 @@ import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from geoalchemy2.functions import ST_AsGeoJSON, ST_Distance, ST_MakePoint, ST_SetSRID
+from geoalchemy2.functions import (ST_AsGeoJSON, ST_Distance, ST_MakePoint,
+                                   ST_SetSRID)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -67,12 +68,8 @@ async def find_nearest_settlement(
     Used for auto-detecting settlement when user picks a point on the map.
     Returns the nearest settlement and distance in kilometers.
     """
-    # Create point from coordinates
     point = ST_SetSRID(ST_MakePoint(lng, lat), 4326)
 
-    # Find nearest settlement with distance
-    # ST_Distance returns distance in degrees for geography, we convert to km
-    # Using approximate conversion: 1 degree ≈ 111 km
     query = select(
         Settlement.id,
         Settlement.name,

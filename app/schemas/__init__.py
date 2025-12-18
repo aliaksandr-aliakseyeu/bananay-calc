@@ -11,7 +11,8 @@ from app.schemas.region import (DiscountInfo, DistributionCenterBrief,
                                 RegionDetailResponse, RegionListResponse,
                                 RegionPricingResponse, RegionPricingUpdate,
                                 RegionStatsResponse, StandardBoxInfo)
-from app.schemas.sector import GeoJSONPolygon, SectorResponse
+from app.schemas.sector import (GeoJSONPolygon, SectorCreate, SectorResponse,
+                                SectorUpdate)
 from app.schemas.tag import TagResponse
 
 __all__ = [
@@ -28,6 +29,8 @@ __all__ = [
     "StandardBoxInfo",
     "DiscountInfo",
     "SectorResponse",
+    "SectorCreate",
+    "SectorUpdate",
     "GeoJSONPolygon",
     "DeliveryPointResponse",
     "DeliveryPointSearchRequest",
