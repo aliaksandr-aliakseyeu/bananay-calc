@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.db.base import get_db
-from app.db.models import DistributionCenter, Region, Sector, Settlement
+from app.db.models import DistributionCenter, Region, Sector, Settlement, User
+from app.dependencies import get_current_user
 from app.schemas.region import (RegionDetailResponse, RegionListResponse,
                                 RegionPricingResponse, RegionPricingUpdate,
                                 RegionStatsResponse)
@@ -147,6 +148,7 @@ async def update_region_pricing(
     region_id: int,
     pricing_update: RegionPricingUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    curent_user: Annotated[User, Depends(get_current_user)],
 ) -> RegionPricingResponse:
     """
     Update region pricing parameters (partial update).
@@ -244,7 +246,6 @@ async def _get_region_stats(db: AsyncSession, region_id: int) -> RegionStatsResp
     Get region statistics in a single query.
 
     Uses scalar subqueries to count all related entities in one database round-trip.
-    Similar to Django's annotate(Count(...)).
     """
     dc_count_subq = (
         select(func.count(DistributionCenter.id))

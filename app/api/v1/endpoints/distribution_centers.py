@@ -8,7 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
-from app.db.models import DistributionCenter
+from app.db.models import DistributionCenter, User
+from app.dependencies import get_current_user
 from app.schemas.distribution_center import (DistributionCenterCreate,
                                              DistributionCenterResponse,
                                              DistributionCenterUpdate)
@@ -109,6 +110,7 @@ async def get_distribution_center(
 async def create_distribution_center(
     data: DistributionCenterCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    curent_user: Annotated[User, Depends(get_current_user)],
 ) -> DistributionCenterResponse:
     """
     Create a new distribution center.
@@ -144,6 +146,7 @@ async def update_distribution_center(
     dc_id: int,
     data: DistributionCenterUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    curent_user: Annotated[User, Depends(get_current_user)],
 ) -> DistributionCenterResponse:
     """
     Update a distribution center.
@@ -177,6 +180,7 @@ async def update_distribution_center(
 async def delete_distribution_center(
     dc_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
+    curent_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
     """
     Delete a distribution center.

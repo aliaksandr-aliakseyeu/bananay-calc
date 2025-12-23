@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     SEARCH_MIN_LENGTH: int = 3
     SEARCH_FUZZY_MIN_LENGTH: int = 5
 
+    # JWT Authentication
+    SECRET_KEY: str = "secret-key"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True

@@ -8,7 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
-from app.db.models import Sector
+from app.db.models import Sector, User
+from app.dependencies import get_current_user
 from app.schemas.sector import SectorCreate, SectorResponse, SectorUpdate
 
 router = APIRouter(prefix="/sectors", tags=["Sectors"])
@@ -99,6 +100,7 @@ async def get_sector(
 async def create_sector(
     data: SectorCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    curent_user: Annotated[User, Depends(get_current_user)],
 ) -> dict:
     """
     Create a new sector.
@@ -132,6 +134,7 @@ async def update_sector(
     sector_id: int,
     data: SectorUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    curent_user: Annotated[User, Depends(get_current_user)],
 ) -> dict:
     """
     Update a sector.
@@ -165,6 +168,7 @@ async def update_sector(
 async def delete_sector(
     sector_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
+    curent_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
     """
     Delete a sector.

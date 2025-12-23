@@ -1,4 +1,6 @@
 """Pydantic schemas."""
+from app.schemas.auth import (RefreshTokenRequest, Token, UserCreate,
+                              UserLogin, UserResponse)
 from app.schemas.country import CountryResponse
 from app.schemas.delivery_point import (BoundingBox, DeliveryPointResponse,
                                         DeliveryPointSearchRequest,
@@ -16,6 +18,11 @@ from app.schemas.sector import (GeoJSONPolygon, SectorCreate, SectorResponse,
 from app.schemas.tag import TagResponse
 
 __all__ = [
+    "Token",
+    "UserLogin",
+    "UserResponse",
+    "UserCreate",
+    "RefreshTokenRequest",
     "CountryResponse",
     "RegionListResponse",
     "RegionDetailResponse",

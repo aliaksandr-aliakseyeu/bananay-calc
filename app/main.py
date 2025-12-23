@@ -1,4 +1,5 @@
 """FastAPI application."""
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -16,7 +17,6 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
-    # Startup
     logger.info("🚀 Application starting up...")
     logger.info("📊 DB Pool configuration:")
     logger.info(f"  - pool_size: {engine.pool.size()}")
@@ -26,14 +26,16 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown
-    logger.info("🛑 Application shutting down...")
-    logger.info("📊 Final pool stats:")
-    logger.info(f"  - checked out connections: {engine.pool.checkedout()}")
+    try:
+        logger.info("🛑 Application shutting down...")
+        logger.info("📊 Final pool stats:")
+        logger.info(f"  - checked out connections: {engine.pool.checkedout()}")
 
-    # Properly dispose of the engine
-    await engine.dispose()
-    logger.info("✅ Database connections closed")
+        await engine.dispose()
+        logger.info("✅ Database connections closed")
+    except Exception as e:
+        if not isinstance(e, (asyncio.CancelledError, KeyboardInterrupt)):
+            logger.error(f"Error during shutdown: {e}")
 
 
 app = FastAPI(
