@@ -11,8 +11,9 @@ from app.schemas.distribution_center import (DistributionCenterCreate,
                                              DistributionCenterUpdate)
 from app.schemas.region import (DiscountInfo, DistributionCenterBrief,
                                 RegionDetailResponse, RegionListResponse,
-                                RegionPricingResponse, RegionPricingUpdate,
-                                RegionStatsResponse, StandardBoxInfo)
+                                RegionPricingCreate, RegionPricingResponse,
+                                RegionPricingUpdate, RegionStatsResponse,
+                                StandardBoxInfo)
 from app.schemas.sector import (GeoJSONPolygon, SectorCreate, SectorResponse,
                                 SectorUpdate)
 from app.schemas.tag import TagResponse
@@ -26,6 +27,7 @@ __all__ = [
     "CountryResponse",
     "RegionListResponse",
     "RegionDetailResponse",
+    "RegionPricingCreate",
     "RegionPricingResponse",
     "RegionPricingUpdate",
     "RegionStatsResponse",
