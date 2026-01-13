@@ -8,9 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import TemperatureMode, User
 from app.dependencies import get_current_user
-from app.schemas.temperature_mode import (TemperatureModeCreate,
-                                          TemperatureModeResponse,
-                                          TemperatureModeUpdate)
+from app.schemas.temperature_mode import (
+    TemperatureModeCreate,
+    TemperatureModeResponse,
+    TemperatureModeUpdate,
+)
+from app.utils.validation import check_unique_fields
 
 router = APIRouter(prefix="/temperature-modes", tags=["Temperature Modes"])
 
@@ -50,8 +53,16 @@ async def create_temperature_mode(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> TemperatureModeResponse:
     """Create a new temperature mode."""
-    if await db.execute(select(TemperatureMode).where(TemperatureMode.name == temperature_mode.name)):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Temperature mode already exists")
+    # Check uniqueness of name and slug
+    await check_unique_fields(
+        db=db,
+        model=TemperatureMode,
+        fields={
+            "name": temperature_mode.name,
+            "slug": temperature_mode.slug
+        }
+    )
+
     db_temperature_mode = TemperatureMode(**temperature_mode.model_dump())
     db.add(db_temperature_mode)
     await db.commit()
@@ -67,14 +78,24 @@ async def update_temperature_mode(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> TemperatureModeResponse:
     """Update a temperature mode."""
-    if await db.execute(select(TemperatureMode).where(TemperatureMode.name == temperature_mode.name)):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Temperature mode already exists")
     result = await db.execute(
         select(TemperatureMode).where(TemperatureMode.id == temperature_mode_id)
     )
     db_temperature_mode = result.scalar_one_or_none()
     if not db_temperature_mode:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Temperature mode not found")
+
+    # Check uniqueness of name and slug (excluding current record)
+    await check_unique_fields(
+        db=db,
+        model=TemperatureMode,
+        fields={
+            "name": temperature_mode.name,
+            "slug": temperature_mode.slug
+        },
+        exclude_id=temperature_mode_id
+    )
+
     update_data = temperature_mode.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_temperature_mode, field, value)

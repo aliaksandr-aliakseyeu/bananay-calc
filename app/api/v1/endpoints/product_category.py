@@ -8,9 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import ProductCategory, User
 from app.dependencies import get_current_user
-from app.schemas.product_category import (ProductCategoryCreate,
-                                          ProductCategoryResponse,
-                                          ProductCategoryUpdate)
+from app.schemas.product_category import (
+    ProductCategoryCreate,
+    ProductCategoryResponse,
+    ProductCategoryUpdate,
+)
+from app.utils.validation import check_unique_fields
 
 router = APIRouter(prefix="/product-categories", tags=["Product Categories"])
 
@@ -50,8 +53,15 @@ async def create_product_category(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ProductCategoryResponse:
     """Create a new product category."""
-    if await db.execute(select(ProductCategory).where(ProductCategory.name == product_category.name)):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Product category already exists")
+    await check_unique_fields(
+        db=db,
+        model=ProductCategory,
+        fields={
+            "name": product_category.name,
+            "slug": product_category.slug
+        }
+    )
+
     db_product_category = ProductCategory(**product_category.model_dump())
     db.add(db_product_category)
     await db.commit()
@@ -70,11 +80,20 @@ async def update_product_category(
     result = await db.execute(
         select(ProductCategory).where(ProductCategory.id == product_category_id)
     )
-    if await db.execute(select(ProductCategory).where(ProductCategory.name == product_category.name)):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Product category already exists")
     db_product_category = result.scalar_one_or_none()
     if not db_product_category:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product category not found")
+
+    await check_unique_fields(
+        db=db,
+        model=ProductCategory,
+        fields={
+            "name": product_category.name,
+            "slug": product_category.slug
+        },
+        exclude_id=product_category_id
+    )
+
     update_data = product_category.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_product_category, field, value)
