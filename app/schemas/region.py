@@ -159,6 +159,62 @@ class DiscountInfoUpdate(BaseModel):
     step_percent: Decimal | None = Field(None, ge=0, le=100, description="Discount step increment, %")
 
 
+class RegionPricingCreate(BaseModel):
+    """Create schema for region pricing (all fields required)."""
+
+    driver_hourly_rate: Decimal = Field(..., gt=0, description="Driver hourly rate, RUB", examples=[Decimal("500.00")])
+    planned_work_hours: Decimal = Field(..., gt=0, description="Planned working hours", examples=[Decimal("8.00")])
+    fuel_price_per_liter: Decimal = Field(..., gt=0, description="Fuel price, RUB/L", examples=[Decimal("55.00")])
+    fuel_consumption_per_100km: Decimal = Field(
+        ..., gt=0, description="Fuel consumption, L/100km", examples=[Decimal("12.00")]
+    )
+    depreciation_coefficient: Decimal = Field(
+        ..., gt=0, description="Vehicle depreciation coefficient", examples=[Decimal("0.15")]
+    )
+    warehouse_processing_per_kg: Decimal = Field(
+        ..., ge=0, description="Warehouse processing cost per kg, RUB", examples=[Decimal("5.00")]
+    )
+    service_fee_per_kg: Decimal = Field(
+        ..., ge=0, description="Service fee per kg (company revenue), RUB", examples=[Decimal("10.00")]
+    )
+    delivery_point_cost: Decimal = Field(
+        ..., gt=0, description="Cost per delivery point, RUB", examples=[Decimal("150.00")]
+    )
+    standard_trip_weight: Decimal = Field(
+        ..., gt=0, description="Standard trip cargo weight, kg", examples=[Decimal("5000.00")]
+    )
+    standard_box: StandardBoxInfo
+    discount: DiscountInfo
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "driver_hourly_rate": "500.00",
+                "planned_work_hours": "8.00",
+                "fuel_price_per_liter": "55.00",
+                "fuel_consumption_per_100km": "12.00",
+                "depreciation_coefficient": "0.15",
+                "warehouse_processing_per_kg": "5.00",
+                "service_fee_per_kg": "10.00",
+                "delivery_point_cost": "150.00",
+                "standard_trip_weight": "5000.00",
+                "standard_box": {
+                    "length": 60,
+                    "width": 40,
+                    "height": 40,
+                    "max_weight": "30.00"
+                },
+                "discount": {
+                    "min_points": 100,
+                    "step_points": 50,
+                    "initial_percent": "5.00",
+                    "step_percent": "5.00"
+                }
+            }
+        }
+    )
+
+
 class RegionPricingUpdate(BaseModel):
     """Update schema for region pricing (all fields optional)."""
 

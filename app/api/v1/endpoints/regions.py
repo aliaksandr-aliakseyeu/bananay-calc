@@ -7,10 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.db.base import get_db
-from app.db.models import DistributionCenter, Region, Sector, Settlement
+from app.db.models import (DistributionCenter, Region, RegionPricing, Sector,
+                           Settlement, User)
+from app.dependencies import get_current_user
 from app.schemas.region import (RegionDetailResponse, RegionListResponse,
-                                RegionPricingResponse, RegionPricingUpdate,
-                                RegionStatsResponse)
+                                RegionPricingCreate, RegionPricingResponse,
+                                RegionPricingUpdate, RegionStatsResponse)
 
 router = APIRouter(prefix="/regions", tags=["Regions"])
 
@@ -142,50 +144,94 @@ async def get_region_pricing(
     return RegionPricingResponse.from_pricing_model(region.pricing)
 
 
+@router.post("/{region_id}/pricing", response_model=RegionPricingResponse, status_code=status.HTTP_201_CREATED)
+async def create_region_pricing(
+    region_id: int,
+    pricing_data: RegionPricingCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> RegionPricingResponse:
+    """
+    Create region pricing parameters.
+
+    Creates calculation parameters for a region that doesn't have pricing configured yet.
+    All fields are required.
+
+    **Parameters:**
+    - **region_id**: Region ID
+    - **pricing_data**: Complete pricing configuration
+
+    **Returns:**
+    Created pricing configuration.
+
+    **Raises:**
+    - **404**: Region not found
+    - **409**: Pricing already exists for this region
+    """
+    # Check if region exists
+    query = (
+        select(Region)
+        .options(joinedload(Region.pricing))
+        .where(Region.id == region_id)
+    )
+
+    result = await db.execute(query)
+    region = result.unique().scalar_one_or_none()
+
+    if not region:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Region with id {region_id} not found",
+        )
+
+    # Check if pricing already exists
+    if region.pricing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Pricing already exists for region {region_id}. Use PATCH to update.",
+        )
+
+    # Create new pricing
+    pricing = RegionPricing(
+        region_id=region_id,
+        driver_hourly_rate=pricing_data.driver_hourly_rate,
+        planned_work_hours=pricing_data.planned_work_hours,
+        fuel_price_per_liter=pricing_data.fuel_price_per_liter,
+        fuel_consumption_per_100km=pricing_data.fuel_consumption_per_100km,
+        depreciation_coefficient=pricing_data.depreciation_coefficient,
+        warehouse_processing_per_kg=pricing_data.warehouse_processing_per_kg,
+        service_fee_per_kg=pricing_data.service_fee_per_kg,
+        delivery_point_cost=pricing_data.delivery_point_cost,
+        standard_trip_weight=pricing_data.standard_trip_weight,
+        standard_box_length=pricing_data.standard_box.length,
+        standard_box_width=pricing_data.standard_box.width,
+        standard_box_height=pricing_data.standard_box.height,
+        standard_box_max_weight=pricing_data.standard_box.max_weight,
+        min_points_for_discount=pricing_data.discount.min_points,
+        discount_step_points=pricing_data.discount.step_points,
+        initial_discount_percent=pricing_data.discount.initial_percent,
+        discount_step_percent=pricing_data.discount.step_percent,
+    )
+
+    db.add(pricing)
+    await db.commit()
+    await db.refresh(pricing)
+
+    return RegionPricingResponse.from_pricing_model(pricing)
+
+
 @router.patch("/{region_id}/pricing", response_model=RegionPricingResponse)
 async def update_region_pricing(
     region_id: int,
     pricing_update: RegionPricingUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    curent_user: Annotated[User, Depends(get_current_user)],
 ) -> RegionPricingResponse:
     """
     Update region pricing parameters (partial update).
 
     Updates calculation parameters for the region. Individual fields can be updated
     without passing all parameters (PATCH semantics).
-
-    **Parameters:**
-    - **region_id**: Region ID
-    - **pricing_update**: Parameters to update (all fields are optional)
-
-    **Usage examples:**
-
-    1. Update only fuel price:
-    ```json
-    {
-      "fuel_price_per_liter": "75.00"
-    }
-    ```
-
-    2. Update standard box parameters:
-    ```json
-    {
-      "standard_box": {
-        "length": 70,
-        "max_weight": "25.00"
-      }
-    }
-    ```
-
-    3. Update discounts:
-    ```json
-    {
-      "discount": {
-        "min_points": 250,
-        "initial_percent": "7.00"
-      }
-    }
-    ```
 
     Returns updated calculation parameters.
     """
@@ -244,7 +290,6 @@ async def _get_region_stats(db: AsyncSession, region_id: int) -> RegionStatsResp
     Get region statistics in a single query.
 
     Uses scalar subqueries to count all related entities in one database round-trip.
-    Similar to Django's annotate(Count(...)).
     """
     dc_count_subq = (
         select(func.count(DistributionCenter.id))

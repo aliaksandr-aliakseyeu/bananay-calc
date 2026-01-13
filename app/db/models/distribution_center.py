@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class DistributionCenter(Base):
-    """Распределительный центр (РЦ)."""
+    """Distribution center (DC)."""
 
     __tablename__ = "geo_distribution_centers"
 

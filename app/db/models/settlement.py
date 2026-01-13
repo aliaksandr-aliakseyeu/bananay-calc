@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 class Settlement(Base):
-    """Населенный пункт."""
+    """Settlement."""
 
     __tablename__ = "geo_settlements"
 

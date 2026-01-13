@@ -3,15 +3,16 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy import Numeric, String, Text
+from sqlalchemy import Boolean, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, validates
+from sqlalchemy.types import Integer
 
 from app.db.base import Base
 from app.utils.slugify import slugify
 
 
 class ProductCategory(Base):
-    """Категория товара."""
+    """Product category."""
 
     __tablename__ = "geo_product_categories"
 
@@ -28,15 +29,22 @@ class ProductCategory(Base):
         Text, nullable=True,
         comment="Описание категории"
     )
-
     cost_multiplier: Mapped[Decimal] = mapped_column(
         Numeric(5, 2), nullable=False, default=1.0,
         comment="Множитель стоимости (пока не используется)"
     )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True,
+        comment="Активность категории"
+    )
+    sort_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0,
+        comment="Порядок сортировки"
+    )
 
     @validates('slug', 'name')
     def generate_slug(self, key: str, value: str) -> str:
-        """Автогенерация slug из name если slug не указан."""
+        """Auto-generate slug from name if slug is not specified."""
         if key == 'name':
             if not self.slug:
                 self.slug = slugify(value)

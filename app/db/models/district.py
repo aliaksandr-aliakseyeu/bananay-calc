@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class District(Base):
-    """Район населенного пункта (например, район города)."""
+    """District of a settlement (e.g. city district)."""
 
     __tablename__ = "geo_districts"
 

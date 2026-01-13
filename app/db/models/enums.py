@@ -12,7 +12,7 @@ class RegionType(str, Enum):
 
 
 class SettlementType(str, Enum):
-    """Типы населенных пунктов."""
+    """Settlement types."""
     GOROD = "город"
     PGT = "пгт"
     SELO = "село"
