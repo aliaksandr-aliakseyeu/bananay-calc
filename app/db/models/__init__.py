@@ -9,6 +9,7 @@ from app.db.models.region import Region
 from app.db.models.region_pricing import RegionPricing
 from app.db.models.sector import Sector
 from app.db.models.settlement import Settlement
+from app.db.models.temperature_mode import TemperatureMode
 from app.db.models.user import User
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "RegionPricing",
     "ProductCategory",
     "User",
+    "TemperatureMode",
 ]

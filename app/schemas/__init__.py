@@ -9,6 +9,9 @@ from app.schemas.delivery_point import (BoundingBox, DeliveryPointResponse,
 from app.schemas.distribution_center import (DistributionCenterCreate,
                                              DistributionCenterResponse,
                                              DistributionCenterUpdate)
+from app.schemas.product_category import (ProductCategoryCreate,
+                                          ProductCategoryResponse,
+                                          ProductCategoryUpdate)
 from app.schemas.region import (DiscountInfo, DistributionCenterBrief,
                                 RegionDetailResponse, RegionListResponse,
                                 RegionPricingCreate, RegionPricingResponse,
@@ -17,6 +20,9 @@ from app.schemas.region import (DiscountInfo, DistributionCenterBrief,
 from app.schemas.sector import (GeoJSONPolygon, SectorCreate, SectorResponse,
                                 SectorUpdate)
 from app.schemas.tag import TagResponse
+from app.schemas.temperature_mode import (TemperatureModeCreate,
+                                          TemperatureModeResponse,
+                                          TemperatureModeUpdate)
 
 __all__ = [
     "Token",
@@ -47,4 +53,10 @@ __all__ = [
     "BoundingBox",
     "GeoJSONPoint",
     "TagResponse",
+    "ProductCategoryCreate",
+    "ProductCategoryResponse",
+    "ProductCategoryUpdate",
+    "TemperatureModeCreate",
+    "TemperatureModeResponse",
+    "TemperatureModeUpdate",
 ]

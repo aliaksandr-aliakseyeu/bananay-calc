@@ -2,8 +2,9 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (auth, calculator, countries, delivery_points,
-                                  distribution_centers, regions, sectors,
-                                  settlements, tags)
+                                  distribution_centers, product_category,
+                                  regions, sectors, settlements, tags,
+                                  temperature_mode)
 
 api_router = APIRouter(prefix="/v1")
 
@@ -14,5 +15,7 @@ api_router.include_router(settlements.router)
 api_router.include_router(sectors.router)
 api_router.include_router(delivery_points.router)
 api_router.include_router(distribution_centers.router)
+api_router.include_router(product_category.router)
+api_router.include_router(temperature_mode.router)
 api_router.include_router(tags.router)
 api_router.include_router(calculator.router)
