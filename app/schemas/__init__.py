@@ -1,28 +1,56 @@
 """Pydantic schemas."""
-from app.schemas.auth import (RefreshTokenRequest, Token, UserCreate,
-                              UserLogin, UserResponse)
+from app.schemas.auth import (
+                              ProducerProfileCreate,
+                              ProducerProfileResponse,
+                              ProducerProfileUpdate,
+                              ProducerRegistration,
+                              RefreshTokenRequest,
+                              Token,
+                              UserCreate,
+                              UserLogin,
+                              UserResponse,
+)
 from app.schemas.country import CountryResponse
-from app.schemas.delivery_point import (BoundingBox, DeliveryPointResponse,
-                                        DeliveryPointSearchRequest,
-                                        DeliveryPointSearchResponse,
-                                        GeoJSONPoint)
-from app.schemas.distribution_center import (DistributionCenterCreate,
-                                             DistributionCenterResponse,
-                                             DistributionCenterUpdate)
-from app.schemas.product_category import (ProductCategoryCreate,
-                                          ProductCategoryResponse,
-                                          ProductCategoryUpdate)
-from app.schemas.region import (DiscountInfo, DistributionCenterBrief,
-                                RegionDetailResponse, RegionListResponse,
-                                RegionPricingCreate, RegionPricingResponse,
-                                RegionPricingUpdate, RegionStatsResponse,
-                                StandardBoxInfo)
-from app.schemas.sector import (GeoJSONPolygon, SectorCreate, SectorResponse,
-                                SectorUpdate)
+from app.schemas.delivery_point import (
+                              BoundingBox,
+                              DeliveryPointResponse,
+                              DeliveryPointSearchRequest,
+                              DeliveryPointSearchResponse,
+                              GeoJSONPoint,
+)
+from app.schemas.distribution_center import (
+                              DistributionCenterCreate,
+                              DistributionCenterResponse,
+                              DistributionCenterUpdate,
+)
+from app.schemas.product_category import (
+                              ProductCategoryCreate,
+                              ProductCategoryResponse,
+                              ProductCategoryUpdate,
+)
+from app.schemas.region import (
+                              DiscountInfo,
+                              DistributionCenterBrief,
+                              RegionDetailResponse,
+                              RegionListResponse,
+                              RegionPricingCreate,
+                              RegionPricingResponse,
+                              RegionPricingUpdate,
+                              RegionStatsResponse,
+                              StandardBoxInfo,
+)
+from app.schemas.sector import (
+                              GeoJSONPolygon,
+                              SectorCreate,
+                              SectorResponse,
+                              SectorUpdate,
+)
 from app.schemas.tag import TagResponse
-from app.schemas.temperature_mode import (TemperatureModeCreate,
-                                          TemperatureModeResponse,
-                                          TemperatureModeUpdate)
+from app.schemas.temperature_mode import (
+                              TemperatureModeCreate,
+                              TemperatureModeResponse,
+                              TemperatureModeUpdate,
+)
 
 __all__ = [
     "Token",
@@ -30,6 +58,10 @@ __all__ = [
     "UserResponse",
     "UserCreate",
     "RefreshTokenRequest",
+    "ProducerProfileCreate",
+    "ProducerProfileResponse",
+    "ProducerProfileUpdate",
+    "ProducerRegistration",
     "CountryResponse",
     "RegionListResponse",
     "RegionDetailResponse",

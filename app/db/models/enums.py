@@ -21,3 +21,9 @@ class SettlementType(str, Enum):
     STANITSA = "станица"
     KHUTOR = "хутор"
     AUL = "аул"
+
+
+class UserRole(str, Enum):
+    """User roles."""
+    ADMIN = "admin"
+    PRODUCER = "producer"

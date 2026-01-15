@@ -3,7 +3,8 @@ from app.db.models.country import Country
 from app.db.models.delivery_point import DeliveryPoint, delivery_point_tags
 from app.db.models.distribution_center import DistributionCenter
 from app.db.models.district import District
-from app.db.models.enums import RegionType, SettlementType
+from app.db.models.enums import RegionType, SettlementType, UserRole
+from app.db.models.producer_profile import ProducerProfile
 from app.db.models.product_category import ProductCategory
 from app.db.models.region import Region
 from app.db.models.region_pricing import RegionPricing
@@ -25,9 +26,11 @@ __all__ = [
     "delivery_point_tags",
     "RegionType",
     "SettlementType",
+    "UserRole",
     "DistributionCenter",
     "RegionPricing",
     "ProductCategory",
     "User",
+    "ProducerProfile",
     "TemperatureMode",
 ]
