@@ -22,8 +22,14 @@ def upgrade() -> None:
     """Upgrade schema."""
 
     # Add new columns to geo_users table
-    op.add_column('geo_users', sa.Column('role', sa.String(length=50), nullable=False, server_default='producer'))
-    op.add_column('geo_users', sa.Column('email_verified', sa.Boolean(), nullable=False, server_default='false'))
+    op.add_column(
+        'geo_users',
+        sa.Column('role', sa.String(length=50), nullable=False, server_default='producer')
+    )
+    op.add_column(
+        'geo_users',
+        sa.Column('email_verified', sa.Boolean(), nullable=False, server_default='false')
+    )
     op.add_column('geo_users', sa.Column('email_verified_at', sa.DateTime(timezone=True), nullable=True))
     op.add_column('geo_users', sa.Column('is_approved', sa.Boolean(), nullable=False, server_default='false'))
     op.add_column('geo_users', sa.Column('approved_at', sa.DateTime(timezone=True), nullable=True))
@@ -31,7 +37,15 @@ def upgrade() -> None:
     op.add_column('geo_users', sa.Column('is_rejected', sa.Boolean(), nullable=False, server_default='false'))
     op.add_column('geo_users', sa.Column('rejected_at', sa.DateTime(timezone=True), nullable=True))
     op.add_column('geo_users', sa.Column('rejected_by', sa.Integer(), nullable=True))
-    op.add_column('geo_users', sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()')))
+    op.add_column(
+        'geo_users',
+        sa.Column(
+            'updated_at',
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text('now()')
+        )
+    )
 
     # Create indexes for new columns
     op.create_index('ix_geo_users_role', 'geo_users', ['role'])
@@ -77,7 +91,7 @@ def upgrade() -> None:
     # Update specific user (gollum80@gmail.com) to admin with full verification
     op.execute("""
         UPDATE geo_users
-        SET role = 'admin',
+        SET role = 'ADMIN',
             email_verified = true,
             email_verified_at = now(),
             is_approved = true,
@@ -114,4 +128,3 @@ def downgrade() -> None:
     op.drop_column('geo_users', 'email_verified_at')
     op.drop_column('geo_users', 'email_verified')
     op.drop_column('geo_users', 'role')
-

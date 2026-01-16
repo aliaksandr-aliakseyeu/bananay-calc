@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.db.models.enums import UserRole
+from app.db.models.enums import OnboardingStatus, UserRole
+
+if TYPE_CHECKING:
+    from app.db.models.producer_profile import ProducerProfile
 
 
 class User(Base):
@@ -25,6 +28,12 @@ class User(Base):
         index=True
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    onboarding_status: Mapped[OnboardingStatus] = mapped_column(
+        Enum(OnboardingStatus, native_enum=False, length=50),
+        nullable=False,
+        default=OnboardingStatus.PENDING_EMAIL_VERIFICATION,
+        index=True
+    )
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     email_verified_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -75,6 +84,12 @@ class User(Base):
         "User",
         foreign_keys=[rejected_by],
         back_populates="rejecter"
+    )
+
+    producer_profile: Mapped[Optional["ProducerProfile"]] = relationship(
+        "ProducerProfile",
+        back_populates="user",
+        uselist=False
     )
 
     def __repr__(self) -> str:

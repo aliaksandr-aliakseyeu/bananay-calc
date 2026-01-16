@@ -1,5 +1,8 @@
 """Pydantic schemas."""
 from app.schemas.auth import (
+                              EmailVerificationRequest,
+                              OnboardingStatusResponse,
+                              ProducerProfileComplete,
                               ProducerProfileCreate,
                               ProducerProfileResponse,
                               ProducerProfileUpdate,
@@ -62,6 +65,9 @@ __all__ = [
     "ProducerProfileResponse",
     "ProducerProfileUpdate",
     "ProducerRegistration",
+    "ProducerProfileComplete",
+    "EmailVerificationRequest",
+    "OnboardingStatusResponse",
     "CountryResponse",
     "RegionListResponse",
     "RegionDetailResponse",

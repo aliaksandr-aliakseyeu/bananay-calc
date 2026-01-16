@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.db.models.enums import UserRole
+from app.db.models.enums import OnboardingStatus, UserRole
 
 
 class Token(BaseModel):
@@ -34,6 +34,7 @@ class UserResponse(BaseModel):
     id: int
     email: str
     role: UserRole
+    onboarding_status: OnboardingStatus
     is_active: bool
     email_verified: bool
     is_approved: bool
@@ -95,14 +96,35 @@ class ProducerProfileResponse(BaseModel):
 
 
 class ProducerRegistration(BaseModel):
-    """Producer registration schema."""
+    """Producer registration schema (Step 1)."""
 
     email: EmailStr
     password: str = Field(..., min_length=8)
     company_name: str = Field(..., min_length=1, max_length=500)
+
+
+class ProducerProfileComplete(BaseModel):
+    """Producer profile completion schema (Step 2)."""
+
+    contact_person: str = Field(..., min_length=2, max_length=255)
+    phone: str = Field(..., min_length=10, max_length=20)
     company_inn: Optional[str] = Field(None, min_length=10, max_length=12)
-    contact_person: Optional[str] = Field(None, max_length=255)
-    phone: Optional[str] = Field(None, max_length=20)
     company_address: Optional[str] = Field(None, max_length=1000)
     description: Optional[str] = None
     website: Optional[str] = Field(None, max_length=500)
+
+
+class EmailVerificationRequest(BaseModel):
+    """Email verification request schema."""
+
+    token: str
+
+
+class OnboardingStatusResponse(BaseModel):
+    """Onboarding status response schema."""
+
+    onboarding_status: OnboardingStatus
+    email_verified: bool
+    profile_completed: bool
+    is_approved: bool
+    required_fields: dict[str, bool]

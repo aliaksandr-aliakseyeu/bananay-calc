@@ -23,7 +23,6 @@ from app.db.models import DistributionCenter  # noqa: E402
 YANDEX_API_KEY = settings.YANDEX_API_KEY
 YANDEX_GEOCODER_URL = "https://geocode-maps.yandex.ru/1.x/"
 
-# Данные распределительных центров
 DISTRIBUTION_CENTERS = [
     {
         "address": "Краснодарский край, городской округ Сочи, село Казачий Брод, Краснофлотская улица, 27",
@@ -170,7 +169,6 @@ async def seed_distribution_centers():
                 if existing:
                     print(f"  ~ Already exists (id={existing})")
                 else:
-                    # Создаем новый РЦ
                     await conn.execute(
                         text("""
                             INSERT INTO distribution_centers

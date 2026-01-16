@@ -44,7 +44,7 @@ class ProducerProfile(Base):
         nullable=False
     )
 
-    user: Mapped["User"] = relationship("User", backref="producer_profile")
+    user: Mapped["User"] = relationship("User", back_populates="producer_profile")
 
     def __repr__(self) -> str:
         return f"<ProducerProfile(id={self.id}, user_id={self.user_id}, company='{self.company_name}')>"

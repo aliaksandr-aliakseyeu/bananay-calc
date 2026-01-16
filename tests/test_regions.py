@@ -5,8 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi import HTTPException
 
-from app.api.v1.endpoints.regions import (_get_region_stats, get_region,
-                                          get_regions)
+from app.api.v1.endpoints.regions import _get_region_stats, get_region, get_regions
 from app.db.models import Country, DistributionCenter, Region, RegionPricing
 from app.db.models.enums import RegionType
 
@@ -178,7 +177,7 @@ async def test_get_region_by_id_success(
     assert result["stats"].distribution_centers_count == 2
     assert result["stats"].sectors_count == 45
     assert result["stats"].settlements_count == 123
-    assert mock_db_session.execute.call_count == 2  # Region query + stats query
+    assert mock_db_session.execute.call_count == 2
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,6 @@
 import re
 import unicodedata
 
-# Таблица транслитерации кириллицы
 CYRILLIC_TRANSLITERATION = {
     'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
     'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',

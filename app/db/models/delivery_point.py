@@ -4,8 +4,18 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from geoalchemy2 import Geometry
-from sqlalchemy import (Boolean, Column, Computed, DateTime, ForeignKey,
-                        Integer, String, Table, Text, func)
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Computed,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Table,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -94,7 +104,6 @@ class DeliveryPoint(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    # Relationships
     settlement: Mapped["Settlement"] = relationship("Settlement", back_populates="delivery_points")
     district: Mapped["District | None"] = relationship("District")
     category: Mapped["Category | None"] = relationship("Category")

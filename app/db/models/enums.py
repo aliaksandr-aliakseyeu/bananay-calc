@@ -25,5 +25,14 @@ class SettlementType(str, Enum):
 
 class UserRole(str, Enum):
     """User roles."""
-    ADMIN = "admin"
-    PRODUCER = "producer"
+    ADMIN = "ADMIN"
+    PRODUCER = "PRODUCER"
+
+
+class OnboardingStatus(str, Enum):
+    """Onboarding status for users."""
+    PENDING_EMAIL_VERIFICATION = "PENDING_EMAIL_VERIFICATION"
+    PENDING_PROFILE_COMPLETION = "PENDING_PROFILE_COMPLETION"
+    PENDING_APPROVAL = "PENDING_APPROVAL"
+    COMPLETED = "COMPLETED"
+    REJECTED = "REJECTED"

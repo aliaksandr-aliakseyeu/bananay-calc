@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_user_id_from_token
 from app.db.base import get_db
 from app.db.models import User
-from app.db.models.enums import UserRole
+from app.db.models.enums import OnboardingStatus, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -80,16 +80,17 @@ async def get_current_admin(
     return current_user
 
 
-async def get_current_active_producer(
+async def get_current_verified_producer(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:
     """
-    Dependency to get current active producer.
+    Dependency to get current producer with verified email.
+
+    Can edit profile but not use main service features.
 
     Requires:
     - User has PRODUCER role
     - Email is verified
-    - Account is approved by admin
     """
     check_user_role(
         current_user,
@@ -103,16 +104,36 @@ async def get_current_active_producer(
             detail="Email verification required",
         )
 
-    if not current_user.is_approved:
+    return current_user
+
+
+async def get_current_active_producer(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """
+    Dependency to get current active producer with full access.
+
+    Requires:
+    - User has PRODUCER role
+    - Onboarding completed (email verified, profile filled, approved)
+    - Account is active
+    """
+    check_user_role(
+        current_user,
+        [UserRole.PRODUCER],
+        "Producer access required"
+    )
+
+    if current_user.onboarding_status != OnboardingStatus.COMPLETED:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account pending admin approval",
+            detail=f"Onboarding not completed. Current status: {current_user.onboarding_status.value}",
         )
 
-    if current_user.is_rejected:
+    if not current_user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account has been rejected",
+            detail="Account is deactivated",
         )
 
     return current_user

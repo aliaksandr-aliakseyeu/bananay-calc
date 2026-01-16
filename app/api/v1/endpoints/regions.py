@@ -179,7 +179,6 @@ async def create_region_pricing(
     - **404**: Region not found
     - **409**: Pricing already exists for this region
     """
-    # Check if region exists
     query = (
         select(Region)
         .options(joinedload(Region.pricing))
@@ -195,14 +194,12 @@ async def create_region_pricing(
             detail=f"Region with id {region_id} not found",
         )
 
-    # Check if pricing already exists
     if region.pricing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Pricing already exists for region {region_id}. Use PATCH to update.",
         )
 
-    # Create new pricing
     pricing = RegionPricing(
         region_id=region_id,
         driver_hourly_rate=pricing_data.driver_hourly_rate,

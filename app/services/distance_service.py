@@ -108,7 +108,7 @@ class DistanceService:
                     summary = data["features"][0].get("properties", {}).get("summary", {})
                     distance_meters = summary.get("distance")
                     if distance_meters is not None:
-                        return distance_meters / 1000.0  # Convert to km
+                        return distance_meters / 1000.0
 
                 logger.warning("Unexpected OpenRouteService API response format: %s", data)
                 return None
@@ -179,7 +179,7 @@ class DistanceService:
 
                 if "route" in data and "distance" in data["route"]:
                     distance_meters = data["route"]["distance"]
-                    return distance_meters / 1000.0  # Convert to km
+                    return distance_meters / 1000.0
 
                 logger.warning("Unexpected Yandex API response format: %s", data)
                 return None
