@@ -1,10 +1,13 @@
 from app.db.models.category import Category, Subcategory, Tag
 from app.db.models.country import Country
+from app.db.models.delivery_list import DeliveryList, DeliveryListItem
 from app.db.models.delivery_point import DeliveryPoint, delivery_point_tags
 from app.db.models.distribution_center import DistributionCenter
 from app.db.models.district import District
-from app.db.models.enums import OnboardingStatus, RegionType, SettlementType, UserRole
+from app.db.models.enums import (OnboardingStatus, RegionType, SettlementType,
+                                 UserRole)
 from app.db.models.producer_profile import ProducerProfile
+from app.db.models.producer_sku import ProducerSKU
 from app.db.models.product_category import ProductCategory
 from app.db.models.region import Region
 from app.db.models.region_pricing import RegionPricing
@@ -33,5 +36,8 @@ __all__ = [
     "ProductCategory",
     "User",
     "ProducerProfile",
+    "ProducerSKU",
     "TemperatureMode",
+    "DeliveryList",
+    "DeliveryListItem",
 ]

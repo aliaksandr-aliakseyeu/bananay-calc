@@ -62,6 +62,12 @@ class Settings(BaseSettings):
     # Use real email sending if SMTP is configured
     USE_REAL_EMAIL: bool = False
 
+    # Delivery lists settings
+    MAX_DELIVERY_LISTS_PER_USER: int = 20
+    MAX_ITEMS_PER_LIST: int = 500
+    DEFAULT_SEARCH_RADIUS_METERS: int = 300
+    MAX_SEARCH_RADIUS_METERS: int = 5000
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True

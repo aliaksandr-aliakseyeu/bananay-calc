@@ -10,7 +10,9 @@ from app.db.base import Base
 from app.db.models.enums import OnboardingStatus, UserRole
 
 if TYPE_CHECKING:
+    from app.db.models.delivery_list import DeliveryList
     from app.db.models.producer_profile import ProducerProfile
+    from app.db.models.producer_sku import ProducerSKU
 
 
 class User(Base):
@@ -90,6 +92,18 @@ class User(Base):
         "ProducerProfile",
         back_populates="user",
         uselist=False
+    )
+
+    delivery_lists: Mapped[list["DeliveryList"]] = relationship(
+        "DeliveryList",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    producer_skus: Mapped[list["ProducerSKU"]] = relationship(
+        "ProducerSKU",
+        back_populates="producer",
+        cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
