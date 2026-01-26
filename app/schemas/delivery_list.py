@@ -128,6 +128,7 @@ class DeliveryListDetailResponse(BaseModel):
     name: str
     description: str | None = None
     is_default: bool
+    items_count: int = Field(0, description="Number of items in the list")
     created_at: datetime
     updated_at: datetime
     items: list[DeliveryListItemResponse] = Field(default_factory=list)

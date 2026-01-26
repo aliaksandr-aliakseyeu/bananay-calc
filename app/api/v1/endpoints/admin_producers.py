@@ -241,6 +241,65 @@ async def reject_producer(
     }
 
 
+@router.get("/{user_id}")
+async def get_producer_detail(
+    user_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
+) -> dict:
+    """
+    Get detailed information about a producer.
+    
+    Returns full producer information including:
+    - User details
+    - Profile information
+    - Approval/rejection history
+    """
+    result = await db.execute(
+        select(User)
+        .options(joinedload(User.producer_profile))
+        .where(User.id == user_id, User.role == UserRole.PRODUCER)
+    )
+    producer = result.unique().scalar_one_or_none()
+
+    if not producer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Producer not found",
+        )
+
+    profile = producer.producer_profile if hasattr(producer, 'producer_profile') else None
+    
+    return {
+        "user_id": producer.id,
+        "email": producer.email,
+        "role": producer.role.value,
+        "onboarding_status": producer.onboarding_status.value,
+        "email_verified": producer.email_verified,
+        "is_approved": producer.is_approved,
+        "is_rejected": producer.is_rejected,
+        "is_active": producer.is_active,
+        "created_at": producer.created_at,
+        "updated_at": producer.updated_at,
+        "approved_at": producer.approved_at,
+        "approved_by": producer.approved_by,
+        "rejected_at": producer.rejected_at,
+        "rejected_by": producer.rejected_by,
+        "profile": {
+            "id": profile.id if profile else None,
+            "company_name": profile.company_name if profile else None,
+            "company_inn": profile.company_inn if profile else None,
+            "contact_person": profile.contact_person if profile else None,
+            "phone": profile.phone if profile else None,
+            "company_address": profile.company_address if profile else None,
+            "description": profile.description if profile else None,
+            "website": profile.website if profile else None,
+            "created_at": profile.created_at if profile else None,
+            "updated_at": profile.updated_at if profile else None,
+        } if profile else None,
+    }
+
+
 @router.patch("/{user_id}/profile", response_model=ProducerProfileResponse)
 async def update_producer_profile_admin(
     user_id: int,

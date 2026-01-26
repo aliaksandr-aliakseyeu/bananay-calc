@@ -11,6 +11,13 @@ class SupplierLocation(BaseModel):
     longitude: float = Field(..., ge=-180, le=180, description="Longitude", examples=[39.723098])
 
 
+class DeliveryPointQuantity(BaseModel):
+    """Delivery point with quantity."""
+
+    point_id: int = Field(..., gt=0, description="Delivery point ID", examples=[123])
+    quantity: int = Field(..., gt=0, description="Quantity for this delivery point", examples=[5])
+
+
 class ProductParams(BaseModel):
     """Product parameters."""
 
@@ -38,8 +45,8 @@ class CalculatorByPointsRequest(BaseModel):
     region_id: int = Field(..., description="Region ID", examples=[1])
     supplier_location: SupplierLocation = Field(..., description="Supplier coordinates")
     product: ProductParams = Field(..., description="Product parameters")
-    delivery_point_ids: list[int] = Field(
-        ..., min_length=1, description="List of delivery point IDs"
+    point_quantities: list[DeliveryPointQuantity] = Field(
+        ..., min_length=1, description="List of delivery points with quantities"
     )
 
     model_config = ConfigDict(
@@ -57,17 +64,12 @@ class CalculatorByPointsRequest(BaseModel):
                     "weight_kg": 1,
                     "items_per_box": 15
                 },
-                "delivery_point_ids": [
-                    4510, 328, 1299, 4877, 2590, 3941, 210, 1784, 3420, 67,
-                    4992, 812, 145, 3055, 2378, 4688, 129, 980, 4112, 2225,
-                    356, 4920, 1877, 4311, 299, 1678, 3840, 4711, 248,
-                    1950, 1221, 4899, 3310, 444, 2887, 1520, 4630, 174, 2600,
-                    990, 3999, 4700, 502, 1408, 330, 2789, 470, 140,
-                    3811, 4555, 2120, 4870, 389, 1750, 4300, 2011, 250,
-                    3920, 4666, 1280, 4990, 910, 2870, 350, 1600, 222,
-                    4012, 3800, 1744, 4788, 520, 2566, 1420, 310, 1833,
-                    2750, 4955, 780, 4900, 998, 3666, 4440, 2077, 490,
-                    3333, 2910, 4050, 1270, 4701, 1888, 275, 3101, 1450, 4998
+                "point_quantities": [
+                    {"point_id": 4510, "quantity": 5},
+                    {"point_id": 328, "quantity": 3},
+                    {"point_id": 1299, "quantity": 10},
+                    {"point_id": 4877, "quantity": 2},
+                    {"point_id": 2590, "quantity": 7}
                 ]
             }
         }
@@ -125,15 +127,15 @@ class CalculatorByPointsResponse(BaseModel):
         description="Delivery cost per one supplier's box, RUB",
         examples=[574.35],
     )
-    delivery_points_used: int = Field(
-        ..., description="Number of used delivery points", examples=[150]
+    total_quantity: int = Field(
+        ..., description="Total quantity across all delivery points", examples=[150]
     )
     delivery_points_ignored: int = Field(
         ..., description="Number of ignored delivery points", examples=[5]
     )
-    sectors_count: int = Field(
+    regions_count: int = Field(
         ...,
-        description="Number of unique sectors containing delivery points",
+        description="Number of unique regions containing delivery points",
         examples=[3],
     )
     distance_to_dc_km: Decimal = Field(

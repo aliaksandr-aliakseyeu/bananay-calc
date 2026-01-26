@@ -11,6 +11,7 @@ from app.db.models.enums import OnboardingStatus, UserRole
 
 if TYPE_CHECKING:
     from app.db.models.delivery_list import DeliveryList
+    from app.db.models.delivery_order import DeliveryOrder
     from app.db.models.producer_profile import ProducerProfile
     from app.db.models.producer_sku import ProducerSKU
 
@@ -102,6 +103,12 @@ class User(Base):
 
     producer_skus: Mapped[list["ProducerSKU"]] = relationship(
         "ProducerSKU",
+        back_populates="producer",
+        cascade="all, delete-orphan"
+    )
+
+    delivery_orders: Mapped[list["DeliveryOrder"]] = relationship(
+        "DeliveryOrder",
         back_populates="producer",
         cascade="all, delete-orphan"
     )

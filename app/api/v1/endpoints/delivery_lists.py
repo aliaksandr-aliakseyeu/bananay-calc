@@ -154,6 +154,7 @@ async def get_delivery_list(
         name=delivery_list.name,
         description=delivery_list.description,
         is_default=delivery_list.is_default,
+        items_count=len(items),
         created_at=delivery_list.created_at,
         updated_at=delivery_list.updated_at,
         items=items,

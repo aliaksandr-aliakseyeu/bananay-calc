@@ -2,7 +2,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
@@ -10,12 +10,12 @@ from app.db.models import ProducerSKU, User
 from app.dependencies import get_current_active_producer
 from app.schemas.producer_sku import (ProducerSKUCreate,
                                       ProducerSKUDetailResponse,
-                                      ProducerSKUResponse, ProducerSKUUpdate)
+                                      ProducerSKUUpdate)
 
 router = APIRouter(prefix="/producer/skus", tags=["Producer SKU"])
 
 
-@router.get("", response_model=list[ProducerSKUResponse])
+@router.get("", response_model=list[ProducerSKUDetailResponse])
 async def get_producer_skus(
     current_user: Annotated[User, Depends(get_current_active_producer)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -25,13 +25,19 @@ async def get_producer_skus(
     search: str | None = Query(None, description="Search by name or SKU code"),
     limit: int = Query(50, ge=1, le=100, description="Number of records"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
-) -> list[ProducerSKUResponse]:
+) -> list[ProducerSKUDetailResponse]:
     """
     Get all SKUs for the current producer.
 
-    Returns a list of SKUs with optional filters.
+    Returns a list of SKUs with detailed information including dimensions and items_per_box.
     """
+    from sqlalchemy.orm import selectinload
+
     query = select(ProducerSKU).where(ProducerSKU.producer_id == current_user.id)
+    query = query.options(
+        selectinload(ProducerSKU.product_category),
+        selectinload(ProducerSKU.temperature_mode)
+    )
 
     if is_active is not None:
         query = query.where(ProducerSKU.is_active == is_active)
@@ -56,7 +62,7 @@ async def get_producer_skus(
     result = await db.execute(query)
     skus = result.scalars().all()
 
-    return [ProducerSKUResponse.model_validate(sku) for sku in skus]
+    return [ProducerSKUDetailResponse.model_validate(sku) for sku in skus]
 
 
 @router.get("/{sku_id}", response_model=ProducerSKUDetailResponse)
@@ -218,4 +224,3 @@ async def delete_producer_sku(
 
     sku.is_active = False
     await db.commit()
-

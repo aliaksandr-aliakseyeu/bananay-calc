@@ -21,25 +21,16 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
     
-    # Создаем таблицу категорий товаров
-    op.create_table(
-        'geo_product_categories',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('name', sa.String(length=100), nullable=False, comment='Название категории'),
-        sa.Column('slug', sa.String(length=100), nullable=False, comment='URL-friendly название'),
-        sa.Column('description', sa.Text(), nullable=True, comment='Описание категории'),
-        sa.Column('cost_multiplier', sa.Numeric(precision=5, scale=2), nullable=False, server_default='1.0', comment='Множитель стоимости'),
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true', comment='Активность категории'),
-        sa.Column('sort_order', sa.Integer(), nullable=False, server_default='0', comment='Порядок сортировки'),
-        sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('name'),
-        sa.UniqueConstraint('slug')
-    )
+    # Добавляем недостающие колонки к таблице geo_product_categories
+    # (таблица уже существует после переименования в миграции dca6b2a2dc5f)
+    op.add_column('geo_product_categories', 
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true', comment='Активность категории'))
+    op.add_column('geo_product_categories',
+        sa.Column('sort_order', sa.Integer(), nullable=False, server_default='0', comment='Порядок сортировки'))
     
-    # Создаем индексы для категорий
-    op.create_index('ix_geo_product_categories_id', 'geo_product_categories', ['id'])
-    op.create_index('ix_geo_product_categories_name', 'geo_product_categories', ['name'])
-    op.create_index('ix_geo_product_categories_slug', 'geo_product_categories', ['slug'])
+    # Добавляем unique constraints
+    op.create_unique_constraint('uq_geo_product_categories_name', 'geo_product_categories', ['name'])
+    op.create_unique_constraint('uq_geo_product_categories_slug', 'geo_product_categories', ['slug'])
     
     # Создаем таблицу температурных режимов
     op.create_table(
@@ -93,11 +84,9 @@ def downgrade() -> None:
     # Удаляем таблицу температурных режимов
     op.drop_table('geo_temperature_modes')
     
-    # Удаляем индексы категорий
-    op.drop_index('ix_geo_product_categories_slug', table_name='geo_product_categories')
-    op.drop_index('ix_geo_product_categories_name', table_name='geo_product_categories')
-    op.drop_index('ix_geo_product_categories_id', table_name='geo_product_categories')
-    
-    # Удаляем таблицу категорий
-    op.drop_table('geo_product_categories')
+    # Удаляем unique constraints и колонки из geo_product_categories
+    op.drop_constraint('uq_geo_product_categories_slug', 'geo_product_categories', type_='unique')
+    op.drop_constraint('uq_geo_product_categories_name', 'geo_product_categories', type_='unique')
+    op.drop_column('geo_product_categories', 'sort_order')
+    op.drop_column('geo_product_categories', 'is_active')
 

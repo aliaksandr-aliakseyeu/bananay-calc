@@ -8,6 +8,7 @@ Create Date: 2026-01-20 15:00:00.000000
 from typing import Sequence, Union
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -70,4 +71,5 @@ def downgrade() -> None:
     op.drop_index('ix_producer_skus_producer_id', 'producer_skus')
     op.drop_index('ix_producer_skus_id', 'producer_skus')
     op.drop_table('producer_skus')
+
 

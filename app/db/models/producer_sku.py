@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.db.models.delivery_order import DeliveryOrder
     from app.db.models.product_category import ProductCategory
     from app.db.models.temperature_mode import TemperatureMode
     from app.db.models.user import User
@@ -57,8 +58,8 @@ class ProducerSKU(Base):
         Numeric(10, 3), nullable=False,
         comment="Weight of one item in kg"
     )
-    items_per_box: Mapped[int] = mapped_column(
-        Integer, nullable=False,
+    items_per_box: Mapped[int | None] = mapped_column(
+        Integer, nullable=True,
         comment="Number of items in producer's box"
     )
     product_category_id: Mapped[int | None] = mapped_column(
@@ -94,10 +95,12 @@ class ProducerSKU(Base):
     producer: Mapped["User"] = relationship("User", back_populates="producer_skus")
     product_category: Mapped["ProductCategory | None"] = relationship("ProductCategory")
     temperature_mode: Mapped["TemperatureMode | None"] = relationship("TemperatureMode")
+    delivery_orders: Mapped[list["DeliveryOrder"]] = relationship(
+        "DeliveryOrder", back_populates="producer_sku"
+    )
 
     def __repr__(self) -> str:
         return (
             f"<ProducerSKU(id={self.id}, name='{self.name}', "
             f"producer_id={self.producer_id}, sku_code='{self.sku_code}')>"
         )
-
