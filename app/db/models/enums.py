@@ -36,3 +36,19 @@ class OnboardingStatus(str, Enum):
     PENDING_APPROVAL = "PENDING_APPROVAL"
     COMPLETED = "COMPLETED"
     REJECTED = "REJECTED"
+
+
+class TutorialType(str, Enum):
+    """Tutorial types for producer dashboard."""
+    DASHBOARD_WELCOME = "DASHBOARD_WELCOME"
+    DELIVERY_LISTS = "DELIVERY_LISTS"
+    PRODUCT_SKU = "PRODUCT_SKU"
+    DELIVERY_ORDERS = "DELIVERY_ORDERS"
+
+
+class TutorialStatus(str, Enum):
+    """Tutorial completion status."""
+    NOT_STARTED = "NOT_STARTED"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    SKIPPED = "SKIPPED"

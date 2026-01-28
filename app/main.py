@@ -1,9 +1,10 @@
 """FastAPI application."""
 import asyncio
 import logging
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
@@ -55,6 +56,33 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
 )
+
+# Request timing middleware
+@app.middleware("http")
+async def add_request_timing(request: Request, call_next):
+    """Add request timing and logging."""
+    start_time = time.time()
+    
+    response = await call_next(request)
+    
+    process_time = (time.time() - start_time) * 1000  # Convert to ms
+    response.headers["X-Process-Time"] = f"{process_time:.2f}ms"
+    
+    # Log slow requests (>1000ms)
+    if process_time > 1000:
+        logger.warning(
+            f"⚠️  SLOW REQUEST: {request.method} {request.url.path} "
+            f"took {process_time:.2f}ms"
+        )
+    # Log all API requests with timing
+    elif request.url.path.startswith("/api/"):
+        logger.info(
+            f"✅ {request.method} {request.url.path} "
+            f"completed in {process_time:.2f}ms"
+        )
+    
+    return response
+
 
 # CORS middleware
 app.add_middleware(

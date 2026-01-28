@@ -18,6 +18,7 @@ from app.db.base import get_db
 from app.db.models import OnboardingStatus, ProducerProfile, User, UserRole
 from app.dependencies import get_current_user
 from app.schemas.auth import (
+    ChangePasswordRequest,
     EmailVerificationRequest,
     ProducerRegistration,
     RefreshTokenRequest,
@@ -295,4 +296,33 @@ async def verify_email(
 
     return {
         "message": "Email verified successfully. Please complete your profile.",
+    }
+
+
+@router.post("/change-password")
+async def change_password(
+    password_request: ChangePasswordRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """
+    Change user password.
+
+    Validates current password and sets new password.
+    """
+    # Verify current password
+    if not verify_password(password_request.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    # Hash and set new password
+    current_user.hashed_password = get_password_hash(password_request.new_password)
+    current_user.updated_at = datetime.now(timezone.utc)
+
+    await db.commit()
+
+    return {
+        "message": "Password changed successfully",
     }

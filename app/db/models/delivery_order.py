@@ -53,8 +53,14 @@ class DeliveryOrder(Base):
     quantity = Column(Integer, nullable=False)  # Number of SKU units
     total_cost = Column(Numeric(10, 2), nullable=True)  # Total delivery cost
     cost_per_unit = Column(Numeric(10, 2), nullable=True)  # Cost per SKU unit
-    status = Column(SQLEnum(OrderStatus, values_callable=lambda x: [e.value for e in x]), nullable=False, default=OrderStatus.DRAFT)
-    priority = Column(SQLEnum(OrderPriority, values_callable=lambda x: [e.value for e in x]), nullable=False, default=OrderPriority.NORMAL)
+    status = Column(
+        SQLEnum(OrderStatus, values_callable=lambda x: [e.value for e in x]), nullable=False, default=OrderStatus.DRAFT
+    )
+    priority = Column(
+        SQLEnum(OrderPriority, values_callable=lambda x: [e.value for e in x],),
+        nullable=False,
+        default=OrderPriority.NORMAL,
+    )
     expected_pickup_date = Column(DateTime(timezone=True), nullable=True)  # When producer plans to hand over
     actual_pickup_date = Column(DateTime(timezone=True), nullable=True)  # When actually picked up
     delivery_deadline = Column(DateTime(timezone=True), nullable=True)  # Delivery deadline
@@ -93,7 +99,11 @@ class DeliveryOrderPoint(Base):
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("delivery_orders.id", ondelete="CASCADE"), nullable=False)
     delivery_point_id = Column(Integer, ForeignKey("geo_delivery_points.id", ondelete="RESTRICT"), nullable=False)
-    status = Column(SQLEnum(DeliveryPointStatus, values_callable=lambda x: [e.value for e in x]), nullable=False, default=DeliveryPointStatus.PENDING)
+    status = Column(
+        SQLEnum(DeliveryPointStatus, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=DeliveryPointStatus.PENDING
+    )
     quantity = Column(Integer, nullable=False)  # Number of SKU units for this point
     photo_url = Column(String(500), nullable=True)  # Photo proof of delivery
     delivery_notes = Column(Text, nullable=True)  # Notes about this specific delivery
@@ -114,7 +124,7 @@ class DeliveryOrderStatusHistory(Base):
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("delivery_orders.id", ondelete="CASCADE"), nullable=False)
     changed_by_user_id = Column(Integer, ForeignKey("geo_users.id", ondelete="SET NULL"), nullable=True)
-    old_status = Column(SQLEnum(OrderStatus, values_callable=lambda x: [e.value for e in x]), nullable=True)  # Null for initial creation
+    old_status = Column(SQLEnum(OrderStatus, values_callable=lambda x: [e.value for e in x]), nullable=True)
     new_status = Column(SQLEnum(OrderStatus, values_callable=lambda x: [e.value for e in x]), nullable=False)
     notes = Column(Text, nullable=True)  # Reason or notes about the change
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)

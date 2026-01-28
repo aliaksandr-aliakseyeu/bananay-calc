@@ -249,7 +249,7 @@ async def get_producer_detail(
 ) -> dict:
     """
     Get detailed information about a producer.
-    
+
     Returns full producer information including:
     - User details
     - Profile information
@@ -269,7 +269,7 @@ async def get_producer_detail(
         )
 
     profile = producer.producer_profile if hasattr(producer, 'producer_profile') else None
-    
+
     return {
         "user_id": producer.id,
         "email": producer.email,

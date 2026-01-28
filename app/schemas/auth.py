@@ -128,3 +128,19 @@ class OnboardingStatusResponse(BaseModel):
     profile_completed: bool
     is_approved: bool
     required_fields: dict[str, bool]
+
+
+class ChangePasswordRequest(BaseModel):
+    """Change password request schema."""
+
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8)
+
+
+class ProducerStatistics(BaseModel):
+    """Producer dashboard statistics schema."""
+
+    delivery_lists_count: int
+    product_skus_count: int
+    total_orders_count: int
+    active_orders_count: int

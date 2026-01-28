@@ -2,18 +2,17 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
-from app.db.models import OnboardingStatus, ProducerProfile, User
+from app.db.models import (DeliveryList, DeliveryOrder, OnboardingStatus,
+                           ProducerProfile, ProducerSKU, User)
+from app.db.models.delivery_order import OrderStatus
 from app.dependencies import get_current_user, get_current_verified_producer
-from app.schemas.auth import (
-    OnboardingStatusResponse,
-    ProducerProfileComplete,
-    ProducerProfileResponse,
-    ProducerProfileUpdate,
-)
+from app.schemas.auth import (OnboardingStatusResponse,
+                              ProducerProfileComplete, ProducerProfileResponse,
+                              ProducerProfileUpdate, ProducerStatistics)
 
 router = APIRouter(prefix="/producer", tags=["Producer"])
 
@@ -173,4 +172,60 @@ async def get_onboarding_status(
         profile_completed=profile_completed,
         is_approved=current_user.is_approved,
         required_fields=required_fields,
+    )
+
+
+@router.get("/statistics", response_model=ProducerStatistics)
+async def get_producer_statistics(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ProducerStatistics:
+    """
+    Get producer dashboard statistics.
+
+    Returns:
+    - Number of delivery lists
+    - Number of product SKUs
+    - Total number of delivery orders
+    - Number of active delivery orders (pending, confirmed, in_progress)
+    """
+    lists_count_result = await db.execute(
+        select(func.count(DeliveryList.id))
+        .where(DeliveryList.user_id == current_user.id)
+    )
+    delivery_lists_count = lists_count_result.scalar() or 0
+
+    skus_count_result = await db.execute(
+        select(func.count(ProducerSKU.id))
+        .where(ProducerSKU.producer_id == current_user.id)
+        .where(ProducerSKU.is_active == True)  # noqa: E712
+    )
+    product_skus_count = skus_count_result.scalar() or 0
+
+    total_orders_result = await db.execute(
+        select(func.count(DeliveryOrder.id))
+        .where(DeliveryOrder.producer_id == current_user.id)
+    )
+    total_orders_count = total_orders_result.scalar() or 0
+
+    active_statuses = [
+        OrderStatus.PENDING,
+        OrderStatus.IN_TRANSIT_TO_DC,
+        OrderStatus.AT_DC,
+        OrderStatus.DRIVER_ASSIGNED,
+        OrderStatus.IN_DELIVERY,
+        OrderStatus.PARTIALLY_DELIVERED,
+    ]
+    active_orders_result = await db.execute(
+        select(func.count(DeliveryOrder.id))
+        .where(DeliveryOrder.producer_id == current_user.id)
+        .where(DeliveryOrder.status.in_(active_statuses))
+    )
+    active_orders_count = active_orders_result.scalar() or 0
+
+    return ProducerStatistics(
+        delivery_lists_count=delivery_lists_count,
+        product_skus_count=product_skus_count,
+        total_orders_count=total_orders_count,
+        active_orders_count=active_orders_count,
     )

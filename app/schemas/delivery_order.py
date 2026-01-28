@@ -107,7 +107,9 @@ class DeliveryOrderResponse(DeliveryOrderBase):
 
 class DeliveryOrderDetailResponse(DeliveryOrderResponse):
     """Detailed schema for delivery order with points and history."""
-    points: list[DeliveryOrderPointResponse] = Field(default_factory=list, alias="delivery_points", serialization_alias="points")
+    points: list[DeliveryOrderPointResponse] = Field(
+        default_factory=list, alias="delivery_points", serialization_alias="points"
+    )
 
     model_config = {"from_attributes": True, "populate_by_name": True}
 

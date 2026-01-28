@@ -1,59 +1,37 @@
 """Pydantic schemas."""
-from app.schemas.auth import (
-                              EmailVerificationRequest,
+from app.schemas.auth import (EmailVerificationRequest,
                               OnboardingStatusResponse,
-                              ProducerProfileComplete,
-                              ProducerProfileCreate,
-                              ProducerProfileResponse,
-                              ProducerProfileUpdate,
-                              ProducerRegistration,
-                              RefreshTokenRequest,
-                              Token,
-                              UserCreate,
-                              UserLogin,
-                              UserResponse,
-)
+                              ProducerProfileComplete, ProducerProfileCreate,
+                              ProducerProfileResponse, ProducerProfileUpdate,
+                              ProducerRegistration, ProducerStatistics,
+                              RefreshTokenRequest, Token, UserCreate,
+                              UserLogin, UserResponse)
 from app.schemas.country import CountryResponse
-from app.schemas.delivery_point import (
-                              BoundingBox,
-                              DeliveryPointResponse,
-                              DeliveryPointSearchRequest,
-                              DeliveryPointSearchResponse,
-                              GeoJSONPoint,
-)
-from app.schemas.distribution_center import (
-                              DistributionCenterCreate,
-                              DistributionCenterResponse,
-                              DistributionCenterUpdate,
-)
-from app.schemas.product_category import (
-                              ProductCategoryCreate,
-                              ProductCategoryResponse,
-                              ProductCategoryUpdate,
-)
-from app.schemas.region import (
-                              DiscountInfo,
-                              DistributionCenterBrief,
-                              RegionDetailResponse,
-                              RegionListResponse,
-                              RegionPricingCreate,
-                              RegionPricingResponse,
-                              RegionPricingUpdate,
-                              RegionStatsResponse,
-                              StandardBoxInfo,
-)
-from app.schemas.sector import (
-                              GeoJSONPolygon,
-                              SectorCreate,
-                              SectorResponse,
-                              SectorUpdate,
-)
+from app.schemas.delivery_point import (BoundingBox, DeliveryPointResponse,
+                                        DeliveryPointSearchRequest,
+                                        DeliveryPointSearchResponse,
+                                        GeoJSONPoint)
+from app.schemas.distribution_center import (DistributionCenterCreate,
+                                             DistributionCenterResponse,
+                                             DistributionCenterUpdate)
+from app.schemas.product_category import (ProductCategoryCreate,
+                                          ProductCategoryResponse,
+                                          ProductCategoryUpdate)
+from app.schemas.region import (DiscountInfo, DistributionCenterBrief,
+                                RegionDetailResponse, RegionListResponse,
+                                RegionPricingCreate, RegionPricingResponse,
+                                RegionPricingUpdate, RegionStatsResponse,
+                                StandardBoxInfo)
+from app.schemas.sector import (GeoJSONPolygon, SectorCreate, SectorResponse,
+                                SectorUpdate)
 from app.schemas.tag import TagResponse
-from app.schemas.temperature_mode import (
-                              TemperatureModeCreate,
-                              TemperatureModeResponse,
-                              TemperatureModeUpdate,
-)
+from app.schemas.temperature_mode import (TemperatureModeCreate,
+                                          TemperatureModeResponse,
+                                          TemperatureModeUpdate)
+from app.schemas.tutorial import (TooltipsToggleRequest, TutorialCreate,
+                                  TutorialResetRequest, TutorialResponse,
+                                  TutorialsSummaryResponse,
+                                  TutorialStatusUpdate, TutorialUpdate)
 
 __all__ = [
     "Token",
@@ -66,6 +44,7 @@ __all__ = [
     "ProducerProfileUpdate",
     "ProducerRegistration",
     "ProducerProfileComplete",
+    "ProducerStatistics",
     "EmailVerificationRequest",
     "OnboardingStatusResponse",
     "CountryResponse",
@@ -97,4 +76,11 @@ __all__ = [
     "TemperatureModeCreate",
     "TemperatureModeResponse",
     "TemperatureModeUpdate",
+    "TutorialCreate",
+    "TutorialUpdate",
+    "TutorialStatusUpdate",
+    "TutorialResponse",
+    "TutorialsSummaryResponse",
+    "TooltipsToggleRequest",
+    "TutorialResetRequest",
 ]

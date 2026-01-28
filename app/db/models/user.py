@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from app.db.models.delivery_order import DeliveryOrder
     from app.db.models.producer_profile import ProducerProfile
     from app.db.models.producer_sku import ProducerSKU
+    from app.db.models.producer_tutorial import ProducerTutorial
 
 
 class User(Base):
@@ -41,6 +42,7 @@ class User(Base):
     email_verified_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    show_tooltips: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_approved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     approved_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -109,6 +111,12 @@ class User(Base):
 
     delivery_orders: Mapped[list["DeliveryOrder"]] = relationship(
         "DeliveryOrder",
+        back_populates="producer",
+        cascade="all, delete-orphan"
+    )
+
+    tutorials: Mapped[list["ProducerTutorial"]] = relationship(
+        "ProducerTutorial",
         back_populates="producer",
         cascade="all, delete-orphan"
     )
