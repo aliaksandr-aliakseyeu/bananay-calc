@@ -38,10 +38,6 @@ docker-compose.yml
 !PROJECT_OVERVIEW.md
 docs/
 
-# Excel files
-*.xlsx
-*.xls
-
 # JSON data files
 *.json
 

@@ -314,3 +314,12 @@ class ProducerSKUDetailResponse(BaseModel):
             }
         },
     )
+
+
+class ProducerSKUPaginatedResponse(BaseModel):
+    """Paginated response for Producer SKU list."""
+
+    items: list[ProducerSKUDetailResponse] = Field(..., description="List of SKUs")
+    total: int = Field(..., description="Total number of SKUs matching the filters")
+    limit: int = Field(..., description="Number of items per page")
+    offset: int = Field(..., description="Number of items skipped")
