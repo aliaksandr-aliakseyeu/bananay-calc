@@ -62,6 +62,51 @@ class ProducerSKU(Base):
         Integer, nullable=True,
         comment="Number of items in producer's box"
     )
+    barcode: Mapped[str | None] = mapped_column(
+        String(100), nullable=True,
+        comment="Product barcode"
+    )
+    sales_channel: Mapped[str | None] = mapped_column(
+        String(50), nullable=True,
+        comment="Sales channel: retail/horeca"
+    )
+    box_length_cm: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True,
+        comment="Transport box length in cm"
+    )
+    box_width_cm: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True,
+        comment="Transport box width in cm"
+    )
+    box_height_cm: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True,
+        comment="Transport box height in cm"
+    )
+    box_weight_g: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True,
+        comment="Transport box weight in grams"
+    )
+    items_per_pallet: Mapped[int | None] = mapped_column(
+        Integer, nullable=True,
+        comment="Number of items on euro pallet"
+    )
+    items_per_pallet_row: Mapped[int | None] = mapped_column(
+        Integer, nullable=True,
+        comment="Number of items in one pallet row"
+    )
+    max_pallet_rows: Mapped[int | None] = mapped_column(
+        Integer, nullable=True,
+        comment="Maximum number of rows on pallet"
+    )
+    pallet_height_cm: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True,
+        comment="Pallet height including pallet base in cm"
+    )
+    full_pallet_weight_kg: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True,
+        comment="Full pallet weight in kg"
+    )
+
     product_category_id: Mapped[int | None] = mapped_column(
         ForeignKey("geo_product_categories.id", ondelete="SET NULL"),
         nullable=True,

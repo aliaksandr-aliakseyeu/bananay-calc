@@ -42,10 +42,46 @@ class ProducerSKUBase(BaseModel):
     items_per_box: int | None = Field(
         None, description="Number of items in producer's box (optional)", examples=[20]
     )
+    barcode: str | None = Field(
+        None, max_length=100, description="Product barcode", examples=["4607034172015"]
+    )
+    sales_channel: str | None = Field(
+        None, max_length=50, description="Sales channel: retail/horeca", examples=["retail"]
+    )
+    box_length_cm: Decimal | None = Field(
+        None, ge=0.01, description="Transport box length in cm (max 2 decimal places)", examples=[40.0]
+    )
+    box_width_cm: Decimal | None = Field(
+        None, ge=0.01, description="Transport box width in cm (max 2 decimal places)", examples=[30.0]
+    )
+    box_height_cm: Decimal | None = Field(
+        None, ge=0.01, description="Transport box height in cm (max 2 decimal places)", examples=[25.0]
+    )
+    box_weight_g: Decimal | None = Field(
+        None, ge=0.01, description="Transport box weight in grams (max 2 decimal places)", examples=[20000.0]
+    )
+    items_per_pallet: int | None = Field(
+        None, ge=1, description="Number of items on euro pallet", examples=[480]
+    )
+    items_per_pallet_row: int | None = Field(
+        None, ge=1, description="Number of items in one pallet row", examples=[24]
+    )
+    max_pallet_rows: int | None = Field(
+        None, ge=1, description="Maximum number of rows on pallet", examples=[20]
+    )
+    pallet_height_cm: Decimal | None = Field(
+        None, ge=0.01, description="Pallet height including pallet base in cm (max 2 decimal places)", examples=[165.0]
+    )
+    full_pallet_weight_kg: Decimal | None = Field(
+        None, ge=0.01, description="Full pallet weight in kg (max 2 decimal places)", examples=[500.0]
+    )
 
-    @field_validator('length_cm', 'width_cm', 'height_cm')
+    @field_validator(
+        'length_cm', 'width_cm', 'height_cm', 'box_length_cm', 'box_width_cm', 'box_height_cm', 'box_weight_g',
+        'pallet_height_cm', 'full_pallet_weight_kg'
+    )
     @classmethod
-    def validate_dimensions(cls, v: Decimal) -> Decimal:
+    def validate_dimensions(cls, v: Decimal | None) -> Decimal | None:
         """Validate dimensions: max 2 decimal places."""
         return validate_decimal_places(v, 2)
 
@@ -55,13 +91,14 @@ class ProducerSKUBase(BaseModel):
         """Validate weight: max 3 decimal places."""
         return validate_decimal_places(v, 3)
 
-    @field_validator('items_per_box')
+    @field_validator('items_per_box', 'items_per_pallet', 'items_per_pallet_row', 'max_pallet_rows')
     @classmethod
-    def validate_items_per_box(cls, v: int | None) -> int | None:
-        """Validate items per box: must be positive if provided."""
+    def validate_positive_integers(cls, v: int | None) -> int | None:
+        """Validate integer fields: must be positive if provided."""
         if v is not None and v <= 0:
             raise ValueError('must be greater than 0')
         return v
+
     product_category_id: int | None = Field(None, description="Product category ID", examples=[1])
     temperature_mode_id: int | None = Field(None, description="Temperature mode ID", examples=[2])
     is_active: bool = Field(True, description="Is SKU active")
@@ -81,6 +118,17 @@ class ProducerSKUCreate(ProducerSKUBase):
                 "height_cm": 10.8,
                 "weight_kg": 1.0,
                 "items_per_box": 20,
+                "barcode": "4607034172015",
+                "sales_channel": "retail",
+                "box_length_cm": 40.0,
+                "box_width_cm": 30.0,
+                "box_height_cm": 25.0,
+                "box_weight_g": 20000.0,
+                "items_per_pallet": 480,
+                "items_per_pallet_row": 24,
+                "max_pallet_rows": 20,
+                "pallet_height_cm": 165.0,
+                "full_pallet_weight_kg": 500.0,
                 "product_category_id": 1,
                 "temperature_mode_id": 2,
                 "is_active": True,
@@ -108,8 +156,34 @@ class ProducerSKUUpdate(BaseModel):
         None, ge=0.001, description="Weight of one item in kg (max 3 decimal places)"
     )
     items_per_box: int | None = Field(None, description="Number of items in producer's box (optional)")
+    barcode: str | None = Field(None, max_length=100, description="Product barcode")
+    sales_channel: str | None = Field(None, max_length=50, description="Sales channel: retail/horeca")
+    box_length_cm: Decimal | None = Field(
+        None, ge=0.01, description="Transport box length in cm (max 2 decimal places)"
+    )
+    box_width_cm: Decimal | None = Field(
+        None, ge=0.01, description="Transport box width in cm (max 2 decimal places)"
+    )
+    box_height_cm: Decimal | None = Field(
+        None, ge=0.01, description="Transport box height in cm (max 2 decimal places)"
+    )
+    box_weight_g: Decimal | None = Field(
+        None, ge=0.01, description="Transport box weight in grams (max 2 decimal places)"
+    )
+    items_per_pallet: int | None = Field(None, ge=1, description="Number of items on euro pallet")
+    items_per_pallet_row: int | None = Field(None, ge=1, description="Number of items in one pallet row")
+    max_pallet_rows: int | None = Field(None, ge=1, description="Maximum number of rows on pallet")
+    pallet_height_cm: Decimal | None = Field(
+        None, ge=0.01, description="Pallet height including pallet base in cm (max 2 decimal places)"
+    )
+    full_pallet_weight_kg: Decimal | None = Field(
+        None, ge=0.01, description="Full pallet weight in kg (max 2 decimal places)"
+    )
 
-    @field_validator('length_cm', 'width_cm', 'height_cm')
+    @field_validator(
+        'length_cm', 'width_cm', 'height_cm', 'box_length_cm', 'box_width_cm', 'box_height_cm',
+        'box_weight_g', 'pallet_height_cm', 'full_pallet_weight_kg'
+    )
     @classmethod
     def validate_dimensions(cls, v: Decimal | None) -> Decimal | None:
         """Validate dimensions: max 2 decimal places."""
@@ -121,10 +195,10 @@ class ProducerSKUUpdate(BaseModel):
         """Validate weight: max 3 decimal places."""
         return validate_decimal_places(v, 3)
 
-    @field_validator('items_per_box')
+    @field_validator('items_per_box', 'items_per_pallet', 'items_per_pallet_row', 'max_pallet_rows')
     @classmethod
-    def validate_items_per_box(cls, v: int | None) -> int | None:
-        """Validate items per box: must be positive if provided."""
+    def validate_positive_integers(cls, v: int | None) -> int | None:
+        """Validate integer fields: must be positive if provided."""
         if v is not None and v <= 0:
             raise ValueError('must be greater than 0')
         return v
@@ -181,6 +255,17 @@ class ProducerSKUDetailResponse(BaseModel):
     height_cm: Decimal = Field(..., description="Product height in cm")
     weight_kg: Decimal = Field(..., description="Weight of one item in kg")
     items_per_box: int | None = Field(None, description="Number of items in producer's box (optional)")
+    barcode: str | None = Field(None, description="Product barcode")
+    sales_channel: str | None = Field(None, description="Sales channel: retail/horeca")
+    box_length_cm: Decimal | None = Field(None, description="Transport box length in cm")
+    box_width_cm: Decimal | None = Field(None, description="Transport box width in cm")
+    box_height_cm: Decimal | None = Field(None, description="Transport box height in cm")
+    box_weight_g: Decimal | None = Field(None, description="Transport box weight in grams")
+    items_per_pallet: int | None = Field(None, description="Number of items on euro pallet")
+    items_per_pallet_row: int | None = Field(None, description="Number of items in one pallet row")
+    max_pallet_rows: int | None = Field(None, description="Maximum number of rows on pallet")
+    pallet_height_cm: Decimal | None = Field(None, description="Pallet height including pallet base in cm")
+    full_pallet_weight_kg: Decimal | None = Field(None, description="Full pallet weight in kg")
     product_category: ProductCategoryResponse | None = Field(None, description="Product category")
     temperature_mode: TemperatureModeResponse | None = Field(None, description="Temperature mode")
     is_active: bool = Field(..., description="Is SKU active")
@@ -200,6 +285,17 @@ class ProducerSKUDetailResponse(BaseModel):
                 "height_cm": 10.8,
                 "weight_kg": 1.0,
                 "items_per_box": 20,
+                "barcode": "4607034172015",
+                "sales_channel": "retail",
+                "box_length_cm": 40.0,
+                "box_width_cm": 30.0,
+                "box_height_cm": 25.0,
+                "box_weight_g": 20000.0,
+                "items_per_pallet": 480,
+                "items_per_pallet_row": 24,
+                "max_pallet_rows": 20,
+                "pallet_height_cm": 165.0,
+                "full_pallet_weight_kg": 500.0,
                 "product_category": {
                     "id": 1,
                     "name": "Фрукты",
@@ -218,4 +314,3 @@ class ProducerSKUDetailResponse(BaseModel):
             }
         },
     )
-
