@@ -11,7 +11,6 @@ import sqlalchemy as sa
 
 from alembic import op
 
-# revision identifiers, used by Alembic.
 revision: str = 'j4k5l6m7n8o9'
 down_revision: Union[str, None] = 'i3j4k5l6m7n8'
 branch_labels: Union[str, Sequence[str], None] = None
@@ -20,7 +19,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Create delivery orders tables."""
-    # Create delivery_orders table
     op.create_table(
         'delivery_orders',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -60,7 +58,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_delivery_orders_id'), 'delivery_orders', ['id'], unique=False)
     op.create_index(op.f('ix_delivery_orders_order_number'), 'delivery_orders', ['order_number'], unique=True)
 
-    # Create delivery_order_points table
     op.create_table(
         'delivery_order_points',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -86,7 +83,6 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_delivery_order_points_id'), 'delivery_order_points', ['id'], unique=False)
 
-    # Create delivery_order_status_history table
     op.create_table(
         'delivery_order_status_history',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -139,7 +135,6 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_delivery_orders_id'), table_name='delivery_orders')
     op.drop_table('delivery_orders')
     
-    # Drop enums
     sa.Enum(name='deliverypointstatus').drop(op.get_bind(), checkfirst=True)
     sa.Enum(name='orderstatus').drop(op.get_bind(), checkfirst=True)
 

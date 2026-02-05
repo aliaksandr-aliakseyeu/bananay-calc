@@ -12,7 +12,6 @@ def validate_decimal_places(value: Decimal | None, max_places: int) -> Decimal |
     """Validate and round decimal to max places."""
     if value is None:
         return None
-    # Round down to max_places
     quantize_str = '0.' + '0' * max_places
     return value.quantize(Decimal(quantize_str), rounding=ROUND_DOWN)
 

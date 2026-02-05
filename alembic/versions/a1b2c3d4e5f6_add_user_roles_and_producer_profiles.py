@@ -11,7 +11,6 @@ import sqlalchemy as sa
 
 from alembic import op
 
-# revision identifiers, used by Alembic.
 revision: str = 'a1b2c3d4e5f6'
 down_revision: Union[str, None] = 'f1a2b3c4d5e6'
 branch_labels: Union[str, Sequence[str], None] = None
@@ -21,7 +20,6 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
 
-    # Add new columns to geo_users table
     op.add_column(
         'geo_users',
         sa.Column('role', sa.String(length=50), nullable=False, server_default='producer')
@@ -47,11 +45,9 @@ def upgrade() -> None:
         )
     )
 
-    # Create indexes for new columns
     op.create_index('ix_geo_users_role', 'geo_users', ['role'])
     op.create_index('ix_geo_users_is_approved', 'geo_users', ['is_approved'])
 
-    # Create foreign key constraints for approved_by and rejected_by
     op.create_foreign_key(
         'fk_geo_users_approved_by',
         'geo_users', 'geo_users',
@@ -63,7 +59,6 @@ def upgrade() -> None:
         ['rejected_by'], ['id']
     )
 
-    # Create producer_profiles table
     op.create_table(
         'producer_profiles',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -83,12 +78,10 @@ def upgrade() -> None:
         sa.UniqueConstraint('company_inn')
     )
 
-    # Create indexes for producer_profiles
     op.create_index('ix_producer_profiles_id', 'producer_profiles', ['id'])
     op.create_index('ix_producer_profiles_user_id', 'producer_profiles', ['user_id'])
     op.create_index('ix_producer_profiles_company_inn', 'producer_profiles', ['company_inn'])
 
-    # Update specific user (gollum80@gmail.com) to admin with full verification
     op.execute("""
         UPDATE geo_users
         SET role = 'ADMIN',
@@ -103,21 +96,17 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
 
-    # Drop producer_profiles table
     op.drop_index('ix_producer_profiles_company_inn', table_name='producer_profiles')
     op.drop_index('ix_producer_profiles_user_id', table_name='producer_profiles')
     op.drop_index('ix_producer_profiles_id', table_name='producer_profiles')
     op.drop_table('producer_profiles')
 
-    # Drop foreign key constraints
     op.drop_constraint('fk_geo_users_rejected_by', 'geo_users', type_='foreignkey')
     op.drop_constraint('fk_geo_users_approved_by', 'geo_users', type_='foreignkey')
 
-    # Drop indexes
     op.drop_index('ix_geo_users_is_approved', table_name='geo_users')
     op.drop_index('ix_geo_users_role', table_name='geo_users')
 
-    # Drop columns from geo_users
     op.drop_column('geo_users', 'updated_at')
     op.drop_column('geo_users', 'rejected_by')
     op.drop_column('geo_users', 'rejected_at')

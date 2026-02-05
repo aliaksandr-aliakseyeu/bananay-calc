@@ -169,7 +169,6 @@ async def get_project_overview():
 
     markdown_content = doc_path.read_text(encoding="utf-8")
 
-    # HTML template with GitHub-like styling
     html_template = r"""
     <!DOCTYPE html>
     <html lang="ru">

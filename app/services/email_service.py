@@ -1,4 +1,5 @@
 """Email service for sending emails."""
+import logging
 import smtplib
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -6,6 +7,8 @@ from email.mime.text import MIMEText
 from pathlib import Path
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class EmailService:
@@ -45,9 +48,9 @@ class EmailService:
             server.send_message(msg)
             server.quit()
 
-            print(f"✅ Email sent successfully to {to_email}")
+            logger.info(f"Email sent successfully to {to_email}")
         except Exception as e:
-            print(f"❌ Failed to send email to {to_email}: {e}")
+            logger.error(f"Failed to send email to {to_email}: {e}")
             raise
 
     @staticmethod
@@ -117,15 +120,15 @@ class EmailService:
         </html>
         """
 
-        print(f"\n📧 Sending verification email to: {email}")
-        print(f"   USE_REAL_EMAIL setting: {settings.USE_REAL_EMAIL}")
-        print(f"   SMTP configured: {bool(settings.SMTP_HOST and settings.SMTP_USER)}")
+        logger.info(f"Sending verification email to: {email}")
+        logger.debug(f"USE_REAL_EMAIL setting: {settings.USE_REAL_EMAIL}")
+        logger.debug(f"SMTP configured: {bool(settings.SMTP_HOST and settings.SMTP_USER)}")
 
         if settings.USE_REAL_EMAIL:
-            print("   → Attempting to send REAL email via SMTP...")
+            logger.info("Attempting to send REAL email via SMTP...")
             EmailService._send_real_email(email, subject, html_body, text_body)
         else:
-            print("   → Logging to file (mock mode)")
+            logger.info("Logging to file (mock mode)")
             email_content = f"""[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]
                             TO: {email}
                             SUBJECT: {subject}
@@ -205,13 +208,13 @@ class EmailService:
         </html>
         """
 
-        print(f"\n📧 Sending approval notification to: {email}")
+        logger.info(f"Sending approval notification to: {email}")
 
         if settings.USE_REAL_EMAIL:
-            print("   → Attempting to send REAL email via SMTP...")
+            logger.info("Attempting to send REAL email via SMTP...")
             EmailService._send_real_email(email, subject, html_body, text_body)
         else:
-            print("   → Logging to file (mock mode)")
+            logger.info("Logging to file (mock mode)")
             email_content = f"""[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]
                             TO: {email}
                             SUBJECT: {subject}
@@ -293,13 +296,13 @@ class EmailService:
         </html>
         """
 
-        print(f"\n📧 Sending rejection notification to: {email}")
+        logger.info(f"Sending rejection notification to: {email}")
 
         if settings.USE_REAL_EMAIL:
-            print("   → Attempting to send REAL email via SMTP...")
+            logger.info("Attempting to send REAL email via SMTP...")
             EmailService._send_real_email(email, subject, html_body, text_body)
         else:
-            print("   → Logging to file (mock mode)")
+            logger.info("Logging to file (mock mode)")
             email_content = f"""[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]
                             TO: {email}
                             SUBJECT: {subject}

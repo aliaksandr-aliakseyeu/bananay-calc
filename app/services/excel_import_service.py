@@ -16,7 +16,6 @@ class ExcelImportError(Exception):
 class ExcelImportService:
     """Service for importing Producer SKU from Excel files."""
 
-    # Column mapping for Russian template
     RU_COLUMNS = {
         "№": "row_number",
         "наименование товара": "name",

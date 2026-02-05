@@ -163,7 +163,6 @@ class CalculatorService:
         point_ids = [point_id for point_id, _ in point_quantities]
         quantity_map = {point_id: quantity for point_id, quantity in point_quantities}
 
-        # Get delivery points with their settlements and regions
         result = await self.db.execute(
             select(DeliveryPoint, Settlement.region_id)
             .join(Settlement, DeliveryPoint.settlement_id == Settlement.id)
@@ -175,7 +174,6 @@ class CalculatorService:
 
         valid_points = result.all()
 
-        # Calculate total quantity for valid points
         total_quantity = 0
         unique_regions = set()
         valid_point_ids = set()
@@ -390,7 +388,6 @@ class CalculatorService:
 
         dc, distance_km, distance_method = dc_info
 
-        # Use total_quantity as num_points and num_regions as num_sectors
         costs = self.calculate_delivery_costs(
             pricing, distance_km, total_quantity, num_regions
         )

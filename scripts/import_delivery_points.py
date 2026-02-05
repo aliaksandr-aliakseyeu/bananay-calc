@@ -3,7 +3,7 @@
 
 Использование:
     poetry run python scripts/import_delivery_points.py
-    poetry run python scripts/import_delivery_points.py --debug  # Режим отладки
+    poetry run python scripts/import_delivery_points.py --debug
 """
 import argparse
 import asyncio
@@ -20,11 +20,11 @@ from tqdm import tqdm
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.db.base import engine  # noqa: E402
-from app.db.models import (District, Settlement, Tag,  # noqa: E402
+from app.db.base import engine
+from app.db.models import (District, Settlement, Tag,
                            delivery_point_tags)
-from app.db.models.enums import SettlementType  # noqa: E402
-from app.utils.slugify import slugify  # noqa: E402
+from app.db.models.enums import SettlementType
+from app.utils.slugify import slugify
 
 BATCH_SIZE = 100
 DEBUG_MODE = False
@@ -276,7 +276,6 @@ def safe_str(value) -> str | None:
         return None
     if isinstance(value, str):
         return value.strip() if value.strip() else None
-    # Преобразуем числа и другие типы в строку
     return str(value).strip()
 
 
@@ -362,7 +361,6 @@ async def process_single_row(
             tag_id = await get_or_create_tag(conn, tag_name, stats)
             tag_ids.append(tag_id)
 
-        # ВАЖНО: координаты - Y (долгота) первой, X (широта) второй!
         longitude = float(row_data['Y'])
         latitude = float(row_data['X'])
 
@@ -418,12 +416,10 @@ async def process_single_row(
         return True
 
     except ValidationError as e:
-        # Валидационная ошибка - пропускаем строку, но продолжаем батч
         stats.add_error(str(e))
         return False
 
     except Exception as e:
-        # SQL или runtime ошибка - транзакция failed
         if DEBUG_MODE:
             print(f'\n{"="*70}')
             print(f'🐛 DEBUG: SQL ОШИБКА В СТРОКЕ EXCEL {row_num + 1}')

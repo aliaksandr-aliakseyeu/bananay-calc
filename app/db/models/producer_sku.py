@@ -12,7 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.db.models.delivery_order import DeliveryOrder
+    from app.db.models.delivery_template import DeliveryTemplate
     from app.db.models.product_category import ProductCategory
     from app.db.models.temperature_mode import TemperatureMode
     from app.db.models.user import User
@@ -140,8 +140,8 @@ class ProducerSKU(Base):
     producer: Mapped["User"] = relationship("User", back_populates="producer_skus")
     product_category: Mapped["ProductCategory | None"] = relationship("ProductCategory")
     temperature_mode: Mapped["TemperatureMode | None"] = relationship("TemperatureMode")
-    delivery_orders: Mapped[list["DeliveryOrder"]] = relationship(
-        "DeliveryOrder", back_populates="producer_sku"
+    delivery_templates: Mapped[list["DeliveryTemplate"]] = relationship(
+        "DeliveryTemplate", back_populates="producer_sku"
     )
 
     def __repr__(self) -> str:

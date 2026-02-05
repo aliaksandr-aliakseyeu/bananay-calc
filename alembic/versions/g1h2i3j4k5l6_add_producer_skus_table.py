@@ -11,7 +11,6 @@ import sqlalchemy as sa
 
 from alembic import op
 
-# revision identifiers, used by Alembic.
 revision: str = 'g1h2i3j4k5l6'
 down_revision: Union[str, Sequence[str], None] = 'h2i3j4k5l6m7'
 branch_labels: Union[str, Sequence[str], None] = None
@@ -44,7 +43,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id')
     )
     
-    # Create indexes
     op.create_index('ix_producer_skus_id', 'producer_skus', ['id'])
     op.create_index('ix_producer_skus_producer_id', 'producer_skus', ['producer_id'])
     op.create_index('ix_producer_skus_name', 'producer_skus', ['name'])
@@ -52,7 +50,6 @@ def upgrade() -> None:
     op.create_index('ix_producer_skus_product_category_id', 'producer_skus', ['product_category_id'])
     op.create_index('ix_producer_skus_temperature_mode_id', 'producer_skus', ['temperature_mode_id'])
     
-    # Create partial unique index for sku_code (only for non-NULL values)
     op.execute("""
         CREATE UNIQUE INDEX uq_producer_skus_sku_code_not_null 
         ON producer_skus (producer_id, sku_code) 

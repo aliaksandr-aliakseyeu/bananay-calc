@@ -45,7 +45,6 @@ async def calculate_by_points(
     try:
         calculator = CalculatorService(db)
 
-        # Convert DeliveryPointQuantity objects to tuples
         point_quantities = [
             (pq.point_id, pq.quantity) for pq in request.point_quantities
         ]

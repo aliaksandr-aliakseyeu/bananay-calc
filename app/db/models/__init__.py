@@ -1,11 +1,14 @@
 from app.db.models.category import Category, Subcategory, Tag
 from app.db.models.country import Country
 from app.db.models.delivery_list import DeliveryList, DeliveryListItem
-from app.db.models.delivery_order import (DeliveryOrder, DeliveryOrderPoint,
+from app.db.models.delivery_order import (DeliveryOrder, DeliveryOrderItem,
+                                          DeliveryOrderItemPoint,
                                           DeliveryOrderStatusHistory,
                                           DeliveryPointStatus, OrderPriority,
                                           OrderStatus)
 from app.db.models.delivery_point import DeliveryPoint, delivery_point_tags
+from app.db.models.delivery_template import (DeliveryTemplate,
+                                             DeliveryTemplatePoint)
 from app.db.models.distribution_center import DistributionCenter
 from app.db.models.district import District
 from app.db.models.enums import (OnboardingStatus, RegionType, SettlementType,
@@ -48,8 +51,11 @@ __all__ = [
     "TemperatureMode",
     "DeliveryList",
     "DeliveryListItem",
+    "DeliveryTemplate",
+    "DeliveryTemplatePoint",
     "DeliveryOrder",
-    "DeliveryOrderPoint",
+    "DeliveryOrderItem",
+    "DeliveryOrderItemPoint",
     "DeliveryOrderStatusHistory",
     "OrderStatus",
     "OrderPriority",

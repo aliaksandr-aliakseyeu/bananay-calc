@@ -78,8 +78,6 @@ class DeliveryPoint(Base):
     subcategory_id: Mapped[int | None] = mapped_column(
         ForeignKey("geo_subcategories.id"), nullable=True, index=True
     )
-    # TODO: MVP - contacts in main table.
-    # TODO: For production: move to separate DeliveryPointContact table (many-to-one)
     phone: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment="May contain multiple phone numbers separated by comma"
     )
@@ -90,10 +88,6 @@ class DeliveryPoint(Base):
         Text, nullable=True, comment="May contain multiple emails separated by comma"
     )
 
-    # TODO: MVP - schedule as text.
-    # TODO: For production: separate DeliveryPointSchedule table with fields:
-    # TODO: - day_of_week (0-6), open_time, close_time, is_24_hours
-    # TODO: This will allow "open now" filter
     schedule: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

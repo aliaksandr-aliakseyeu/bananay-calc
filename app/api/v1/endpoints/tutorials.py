@@ -55,7 +55,6 @@ async def get_all_tutorials(
     Returns summary including completion status and tooltips visibility.
     Automatically creates tutorial records if they don't exist.
     """
-    # OPTIMIZED: Fetch all existing tutorials in ONE query
     result = await db.execute(
         select(ProducerTutorial)
         .where(ProducerTutorial.producer_id == current_user.id)
@@ -63,11 +62,9 @@ async def get_all_tutorials(
     )
     tutorials = result.scalars().all()
     
-    # Check which tutorial types are missing
     existing_types = {t.tutorial_type for t in tutorials}
     missing_types = [tt for tt in TutorialType if tt not in existing_types]
     
-    # OPTIMIZED: Create all missing tutorials in ONE batch
     if missing_types:
         new_tutorials = [
             ProducerTutorial(
@@ -81,7 +78,6 @@ async def get_all_tutorials(
         db.add_all(new_tutorials)
         await db.commit()
         
-        # OPTIMIZED: Fetch all created tutorials in ONE query instead of refresh loop
         result = await db.execute(
             select(ProducerTutorial)
             .where(
