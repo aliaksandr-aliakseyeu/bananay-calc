@@ -34,31 +34,79 @@ def location_to_geojson(location) -> dict:
     }
 
 
-@router.get("", response_model=list[DeliveryListResponse])
+@router.get("", response_model=list[DeliveryListDetailResponse])
 async def get_user_delivery_lists(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> list[DeliveryListResponse]:
+    include_items: bool = Query(False, description="Include delivery points in response"),
+) -> list[DeliveryListDetailResponse]:
     """
     Get all delivery lists for the current user.
 
     Returns a list of all delivery lists with item counts.
     Lists are sorted by default flag (default first) and creation date.
-    """
-    lists_with_counts = await DeliveryListService.get_user_lists(db, current_user.id)
 
-    return [
-        DeliveryListResponse(
-            id=delivery_list.id,
-            name=delivery_list.name,
-            description=delivery_list.description,
-            is_default=delivery_list.is_default,
-            items_count=items_count,
-            created_at=delivery_list.created_at,
-            updated_at=delivery_list.updated_at,
-        )
-        for delivery_list, items_count in lists_with_counts
-    ]
+    - **include_items**: If True, includes full list of delivery points for each list
+    """
+    if include_items:
+        lists = await DeliveryListService.get_user_lists(db, current_user.id, with_items=True)
+        result = []
+        for delivery_list in lists:
+            items = []
+            for item in delivery_list.items:
+                location_geojson = location_to_geojson(item.delivery_point.location)
+                items.append(
+                    DeliveryListItemResponse(
+                        id=item.id,
+                        custom_name=item.custom_name,
+                        notes=item.notes,
+                        created_at=item.created_at,
+                        delivery_point=DeliveryPointResponse(
+                            id=item.delivery_point.id,
+                            name=item.delivery_point.name,
+                            type=item.delivery_point.type,
+                            title=item.delivery_point.title,
+                            address=item.delivery_point.address,
+                            address_comment=item.delivery_point.address_comment,
+                            landmark=item.delivery_point.landmark,
+                            location=location_geojson,
+                            phone=item.delivery_point.phone,
+                            mobile=item.delivery_point.mobile,
+                            email=item.delivery_point.email,
+                            schedule=item.delivery_point.schedule,
+                            is_active=item.delivery_point.is_active,
+                        ),
+                    )
+                )
+
+            result.append(
+                DeliveryListDetailResponse(
+                    id=delivery_list.id,
+                    name=delivery_list.name,
+                    description=delivery_list.description,
+                    is_default=delivery_list.is_default,
+                    items_count=len(delivery_list.items),
+                    created_at=delivery_list.created_at,
+                    updated_at=delivery_list.updated_at,
+                    items=items,
+                )
+            )
+        return result
+    else:
+        lists_with_counts = await DeliveryListService.get_user_lists(db, current_user.id, with_items=False)
+        return [
+            DeliveryListDetailResponse(
+                id=delivery_list.id,
+                name=delivery_list.name,
+                description=delivery_list.description,
+                is_default=delivery_list.is_default,
+                items_count=items_count,
+                created_at=delivery_list.created_at,
+                updated_at=delivery_list.updated_at,
+                items=[],
+            )
+            for delivery_list, items_count in lists_with_counts
+        ]
 
 
 @router.post("", response_model=DeliveryListResponse, status_code=status.HTTP_201_CREATED)

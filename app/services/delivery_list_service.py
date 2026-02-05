@@ -16,29 +16,47 @@ class DeliveryListService:
     """Service for managing delivery lists."""
 
     @staticmethod
-    async def get_user_lists(db: AsyncSession, user_id: int) -> list[Tuple[DeliveryList, int]]:
+    async def get_user_lists(
+        db: AsyncSession,
+        user_id: int,
+        with_items: bool = False
+    ) -> list[Tuple[DeliveryList, int]] | list[DeliveryList]:
         """
         Get all delivery lists for a user with item counts.
 
         Args:
             db: Database session
             user_id: User ID
+            with_items: Load items with delivery points
 
         Returns:
-            List of tuples (DeliveryList, items_count)
+            List of tuples (DeliveryList, items_count) if with_items=False
+            List of DeliveryList objects with preloaded items if with_items=True
         """
-        query = (
-            select(
-                DeliveryList,
-                func.count(DeliveryListItem.id).label("items_count")
+        if with_items:
+            query = (
+                select(DeliveryList)
+                .where(DeliveryList.user_id == user_id)
+                .options(
+                    selectinload(DeliveryList.items).joinedload(DeliveryListItem.delivery_point)
+                )
+                .order_by(DeliveryList.is_default.desc(), DeliveryList.created_at.desc())
             )
-            .outerjoin(DeliveryListItem, DeliveryList.id == DeliveryListItem.list_id)
-            .where(DeliveryList.user_id == user_id)
-            .group_by(DeliveryList.id)
-            .order_by(DeliveryList.is_default.desc(), DeliveryList.created_at.desc())
-        )
-        result = await db.execute(query)
-        return result.all()
+            result = await db.execute(query)
+            return result.scalars().all()
+        else:
+            query = (
+                select(
+                    DeliveryList,
+                    func.count(DeliveryListItem.id).label("items_count")
+                )
+                .outerjoin(DeliveryListItem, DeliveryList.id == DeliveryListItem.list_id)
+                .where(DeliveryList.user_id == user_id)
+                .group_by(DeliveryList.id)
+                .order_by(DeliveryList.is_default.desc(), DeliveryList.created_at.desc())
+            )
+            result = await db.execute(query)
+            return result.all()
 
     @staticmethod
     async def get_list_by_id(
