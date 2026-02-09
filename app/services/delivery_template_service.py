@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -22,12 +22,22 @@ class DeliveryTemplateService:
         user_id: int,
         with_points: bool = False,
         only_active: bool = True,
+        search: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> list[DeliveryTemplate]:
-        """Get all templates for a user."""
+        """Get templates for a user with optional search and pagination."""
         query = select(DeliveryTemplate).where(DeliveryTemplate.producer_id == user_id)
 
         if only_active:
             query = query.where(DeliveryTemplate.is_active)
+
+        if search and search.strip():
+            search_filter = f"%{search.strip()}%"
+            query = query.where(
+                (DeliveryTemplate.name.ilike(search_filter))
+                | (DeliveryTemplate.description.ilike(search_filter))
+            )
 
         if with_points:
             query = query.options(
@@ -41,8 +51,35 @@ class DeliveryTemplateService:
             DeliveryTemplate.created_at.desc()
         )
 
+        if limit is not None:
+            query = query.limit(limit)
+        if offset is not None:
+            query = query.offset(offset)
+
         result = await db.execute(query)
         return list(result.scalars().all())
+
+    @staticmethod
+    async def count_user_templates(
+        db: AsyncSession,
+        user_id: int,
+        only_active: bool = True,
+        search: str | None = None,
+    ) -> int:
+        """Count templates for a user (with optional search filter)."""
+        query = select(func.count(DeliveryTemplate.id)).where(
+            DeliveryTemplate.producer_id == user_id
+        )
+        if only_active:
+            query = query.where(DeliveryTemplate.is_active)
+        if search and search.strip():
+            search_filter = f"%{search.strip()}%"
+            query = query.where(
+                (DeliveryTemplate.name.ilike(search_filter))
+                | (DeliveryTemplate.description.ilike(search_filter))
+            )
+        result = await db.execute(query)
+        return result.scalar_one() or 0
 
     @staticmethod
     async def get_template_by_id(

@@ -7,6 +7,10 @@ from app.db.models.delivery_order import (DeliveryOrder, DeliveryOrderItem,
                                           DeliveryPointStatus, OrderPriority,
                                           OrderStatus)
 from app.db.models.delivery_point import DeliveryPoint, delivery_point_tags
+from app.db.models.delivery_point_suggestion import (
+    DeliveryPointSuggestion,
+    delivery_point_suggestion_tags,
+)
 from app.db.models.delivery_template import (DeliveryTemplate,
                                              DeliveryTemplatePoint)
 from app.db.models.distribution_center import DistributionCenter
@@ -35,6 +39,8 @@ __all__ = [
     "Tag",
     "DeliveryPoint",
     "delivery_point_tags",
+    "DeliveryPointSuggestion",
+    "delivery_point_suggestion_tags",
     "RegionType",
     "SettlementType",
     "UserRole",

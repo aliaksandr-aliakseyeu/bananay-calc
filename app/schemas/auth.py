@@ -142,5 +142,6 @@ class ProducerStatistics(BaseModel):
 
     delivery_lists_count: int
     product_skus_count: int
+    delivery_templates_count: int
     total_orders_count: int
     active_orders_count: int

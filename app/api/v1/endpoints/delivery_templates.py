@@ -1,12 +1,13 @@
 """Delivery templates endpoints."""
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
 from app.db.models import User
 from app.dependencies import get_current_user
+from app.schemas.common import PaginatedResponse
 from app.schemas.delivery_template import (
     DeliveryTemplateCalculateResponse, DeliveryTemplateCreate,
     DeliveryTemplateDetailResponse, DeliveryTemplatePointCreate,
@@ -18,23 +19,38 @@ from app.services.delivery_template_service import DeliveryTemplateService
 router = APIRouter(prefix="/delivery-templates", tags=["Delivery Templates"])
 
 
-@router.get("", response_model=list[DeliveryTemplateDetailResponse])
+@router.get("", response_model=PaginatedResponse[DeliveryTemplateDetailResponse])
 async def get_user_templates(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     include_points: bool = True,
     only_active: bool = True,
-) -> list[DeliveryTemplateDetailResponse]:
+    search: str | None = Query(None, description="Search by template name or description"),
+    limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    offset: int = Query(0, ge=0, description="Items to skip"),
+) -> PaginatedResponse[DeliveryTemplateDetailResponse]:
     """
-    Get all delivery templates for the current user.
+    Get delivery templates for the current user with pagination and search.
 
     Templates are sorted by last_used_at (most recent first), then by created_at.
 
     - **include_points**: Include delivery points in response
     - **only_active**: Only return active (non-archived) templates
+    - **search**: Filter by name or description (case-insensitive)
+    - **limit**: Items per page (1-100)
+    - **offset**: Number of items to skip
     """
+    total = await DeliveryTemplateService.count_user_templates(
+        db, current_user.id, only_active=only_active, search=search
+    )
     templates = await DeliveryTemplateService.get_user_templates(
-        db, current_user.id, with_points=include_points, only_active=only_active
+        db,
+        current_user.id,
+        with_points=include_points,
+        only_active=only_active,
+        search=search,
+        limit=limit,
+        offset=offset,
     )
 
     result = []
@@ -53,7 +69,7 @@ async def get_user_templates(
         
         result.append(DeliveryTemplateDetailResponse.model_validate(template_dict))
     
-    return result
+    return PaginatedResponse(items=result, total=total)
 
 
 @router.post("", response_model=DeliveryTemplateResponse, status_code=status.HTTP_201_CREATED)

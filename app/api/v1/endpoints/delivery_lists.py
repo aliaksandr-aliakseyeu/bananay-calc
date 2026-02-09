@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import User
 from app.dependencies import get_current_user
+from app.schemas.common import PaginatedResponse
 from app.schemas.delivery_list import (CheckPointInListResponse,
                                        DeliveryListCreate,
                                        DeliveryListDetailResponse,
@@ -34,22 +35,33 @@ def location_to_geojson(location) -> dict:
     }
 
 
-@router.get("", response_model=list[DeliveryListDetailResponse])
+@router.get("", response_model=PaginatedResponse[DeliveryListDetailResponse])
 async def get_user_delivery_lists(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     include_items: bool = Query(False, description="Include delivery points in response"),
-) -> list[DeliveryListDetailResponse]:
+    search: str | None = Query(None, description="Search by list name or description"),
+    limit: int = Query(10, ge=1, le=100, description="Number of items per page"),
+    offset: int = Query(0, ge=0, description="Number of items to skip"),
+) -> PaginatedResponse[DeliveryListDetailResponse]:
     """
-    Get all delivery lists for the current user.
+    Get all delivery lists for the current user with pagination.
 
-    Returns a list of all delivery lists with item counts.
+    Returns a paginated list of delivery lists with item counts.
     Lists are sorted by default flag (default first) and creation date.
 
     - **include_items**: If True, includes full list of delivery points for each list
+    - **search**: Search by list name or description
+    - **limit**: Number of items per page (1-100)
+    - **offset**: Number of items to skip
     """
+    # Get total count
+    total = await DeliveryListService.count_user_lists(db, current_user.id, search=search)
+    
     if include_items:
-        lists = await DeliveryListService.get_user_lists(db, current_user.id, with_items=True)
+        lists = await DeliveryListService.get_user_lists(
+            db, current_user.id, with_items=True, search=search, limit=limit, offset=offset
+        )
         result = []
         for delivery_list in lists:
             items = []
@@ -91,10 +103,12 @@ async def get_user_delivery_lists(
                     items=items,
                 )
             )
-        return result
+        return PaginatedResponse(items=result, total=total)
     else:
-        lists_with_counts = await DeliveryListService.get_user_lists(db, current_user.id, with_items=False)
-        return [
+        lists_with_counts = await DeliveryListService.get_user_lists(
+            db, current_user.id, with_items=False, search=search, limit=limit, offset=offset
+        )
+        items = [
             DeliveryListDetailResponse(
                 id=delivery_list.id,
                 name=delivery_list.name,
@@ -107,6 +121,7 @@ async def get_user_delivery_lists(
             )
             for delivery_list, items_count in lists_with_counts
         ]
+        return PaginatedResponse(items=items, total=total)
 
 
 @router.post("", response_model=DeliveryListResponse, status_code=status.HTTP_201_CREATED)

@@ -19,7 +19,10 @@ class DeliveryListService:
     async def get_user_lists(
         db: AsyncSession,
         user_id: int,
-        with_items: bool = False
+        with_items: bool = False,
+        search: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None
     ) -> list[Tuple[DeliveryList, int]] | list[DeliveryList]:
         """
         Get all delivery lists for a user with item counts.
@@ -28,6 +31,9 @@ class DeliveryListService:
             db: Database session
             user_id: User ID
             with_items: Load items with delivery points
+            search: Search query for list name or description
+            limit: Maximum number of results to return
+            offset: Number of results to skip
 
         Returns:
             List of tuples (DeliveryList, items_count) if with_items=False
@@ -42,6 +48,19 @@ class DeliveryListService:
                 )
                 .order_by(DeliveryList.is_default.desc(), DeliveryList.created_at.desc())
             )
+            
+            if search:
+                search_filter = f"%{search}%"
+                query = query.where(
+                    (DeliveryList.name.ilike(search_filter)) |
+                    (DeliveryList.description.ilike(search_filter))
+                )
+            
+            if limit is not None:
+                query = query.limit(limit)
+            if offset is not None:
+                query = query.offset(offset)
+            
             result = await db.execute(query)
             return result.scalars().all()
         else:
@@ -55,8 +74,50 @@ class DeliveryListService:
                 .group_by(DeliveryList.id)
                 .order_by(DeliveryList.is_default.desc(), DeliveryList.created_at.desc())
             )
+            
+            if search:
+                search_filter = f"%{search}%"
+                query = query.where(
+                    (DeliveryList.name.ilike(search_filter)) |
+                    (DeliveryList.description.ilike(search_filter))
+                )
+            
+            if limit is not None:
+                query = query.limit(limit)
+            if offset is not None:
+                query = query.offset(offset)
+            
             result = await db.execute(query)
             return result.all()
+    
+    @staticmethod
+    async def count_user_lists(
+        db: AsyncSession,
+        user_id: int,
+        search: str | None = None
+    ) -> int:
+        """
+        Count total delivery lists for a user.
+
+        Args:
+            db: Database session
+            user_id: User ID
+            search: Search query for list name or description
+
+        Returns:
+            Total count of lists
+        """
+        query = select(func.count(DeliveryList.id)).where(DeliveryList.user_id == user_id)
+        
+        if search:
+            search_filter = f"%{search}%"
+            query = query.where(
+                (DeliveryList.name.ilike(search_filter)) |
+                (DeliveryList.description.ilike(search_filter))
+            )
+        
+        result = await db.execute(query)
+        return result.scalar_one()
 
     @staticmethod
     async def get_list_by_id(

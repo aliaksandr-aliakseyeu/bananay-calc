@@ -6,8 +6,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
-from app.db.models import (DeliveryList, DeliveryOrder, OnboardingStatus,
-                           ProducerProfile, ProducerSKU, User)
+from app.db.models import (DeliveryList, DeliveryOrder, DeliveryTemplate,
+                           OnboardingStatus, ProducerProfile, ProducerSKU,
+                           User)
 from app.db.models.delivery_order import OrderStatus
 from app.dependencies import get_current_user, get_current_verified_producer
 from app.schemas.auth import (OnboardingStatusResponse,
@@ -202,6 +203,13 @@ async def get_producer_statistics(
     )
     product_skus_count = skus_count_result.scalar() or 0
 
+    templates_count_result = await db.execute(
+        select(func.count(DeliveryTemplate.id))
+        .where(DeliveryTemplate.producer_id == current_user.id)
+        .where(DeliveryTemplate.is_active == True)  # noqa: E712
+    )
+    delivery_templates_count = int(templates_count_result.scalar() or 0)
+
     total_orders_result = await db.execute(
         select(func.count(DeliveryOrder.id))
         .where(DeliveryOrder.producer_id == current_user.id)
@@ -226,6 +234,7 @@ async def get_producer_statistics(
     return ProducerStatistics(
         delivery_lists_count=delivery_lists_count,
         product_skus_count=product_skus_count,
+        delivery_templates_count=delivery_templates_count,
         total_orders_count=total_orders_count,
         active_orders_count=active_orders_count,
     )
