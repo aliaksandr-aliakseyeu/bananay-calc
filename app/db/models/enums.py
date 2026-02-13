@@ -52,3 +52,54 @@ class TutorialStatus(str, Enum):
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
     SKIPPED = "SKIPPED"
+
+
+class DriverAccountStatus(str, Enum):
+    """Driver account status."""
+    DRAFT = "draft"
+    PENDING_REVIEW = "pending_review"
+    ACTIVE = "active"
+    BLOCKED = "blocked"
+
+
+class DriverApplicationStatus(str, Enum):
+    """Driver application (KYC-lite) status."""
+    DRAFT = "draft"
+    PENDING_REVIEW = "pending_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class MediaFileOwnerType(str, Enum):
+    """MediaFile owner entity type."""
+    DRIVER = "driver"
+    APPLICATION = "application"
+    SHIFT = "shift"
+    ROUTE_STEP = "route_step"
+    VEHICLE = "vehicle"
+    DAILY_CHECKIN = "daily_checkin"
+
+
+class DriverOtpStatus(str, Enum):
+    """Driver OTP code status (one-time use)."""
+    PENDING = "pending"
+    USED = "used"
+
+
+class DailyCheckInStatus(str, Enum):
+    """Daily check-in (EKF) status."""
+    PENDING = "pending"
+    PENDING_REVIEW = "pending_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    EXPIRED = "expired"
+
+
+class DailyCheckInPhotoKind(str, Enum):
+    """Kind of photo in daily check-in."""
+    SELFIE = "selfie"
+    VEHICLE_FRONT = "vehicle_front"
+    VEHICLE_LEFT = "vehicle_left"
+    VEHICLE_RIGHT = "vehicle_right"
+    VEHICLE_REAR = "vehicle_rear"
+    VEHICLE_CARGO = "vehicle_cargo"

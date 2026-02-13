@@ -145,3 +145,25 @@ class ProducerStatistics(BaseModel):
     delivery_templates_count: int
     total_orders_count: int
     active_orders_count: int
+
+
+class DriverRequestOtp(BaseModel):
+    """Request OTP for driver login."""
+
+    phone_e164: str = Field(..., min_length=10, max_length=20)
+
+
+class DriverVerifyOtp(BaseModel):
+    """Verify OTP and get driver tokens."""
+
+    phone_e164: str = Field(..., min_length=10, max_length=20)
+    code: str = Field(..., min_length=4, max_length=10)
+
+
+class DriverVerifyOtpResponse(BaseModel):
+    """Response after driver OTP verification."""
+
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    is_new_user: bool = False

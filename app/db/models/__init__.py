@@ -1,5 +1,6 @@
 from app.db.models.category import Category, Subcategory, Tag
 from app.db.models.country import Country
+from app.db.models.daily_checkin import DailyCheckIn, DailyCheckInPhoto
 from app.db.models.delivery_list import DeliveryList, DeliveryListItem
 from app.db.models.delivery_order import (DeliveryOrder, DeliveryOrderItem,
                                           DeliveryOrderItemPoint,
@@ -8,15 +9,22 @@ from app.db.models.delivery_order import (DeliveryOrder, DeliveryOrderItem,
                                           OrderStatus)
 from app.db.models.delivery_point import DeliveryPoint, delivery_point_tags
 from app.db.models.delivery_point_suggestion import (
-    DeliveryPointSuggestion,
-    delivery_point_suggestion_tags,
-)
+    DeliveryPointSuggestion, delivery_point_suggestion_tags)
 from app.db.models.delivery_template import (DeliveryTemplate,
                                              DeliveryTemplatePoint)
 from app.db.models.distribution_center import DistributionCenter
 from app.db.models.district import District
-from app.db.models.enums import (OnboardingStatus, RegionType, SettlementType,
+from app.db.models.driver_account import DriverAccount
+from app.db.models.driver_application import DriverApplication
+from app.db.models.driver_otp_code import DriverOtpCode
+from app.db.models.driver_telegram_binding import DriverTelegramBinding
+from app.db.models.driver_vehicle import DriverVehicle
+from app.db.models.enums import (DailyCheckInPhotoKind, DailyCheckInStatus,
+                                 DriverAccountStatus, DriverApplicationStatus,
+                                 DriverOtpStatus, MediaFileOwnerType,
+                                 OnboardingStatus, RegionType, SettlementType,
                                  TutorialStatus, TutorialType, UserRole)
+from app.db.models.media_file import MediaFile
 from app.db.models.producer_profile import ProducerProfile
 from app.db.models.producer_sku import ProducerSKU
 from app.db.models.producer_tutorial import ProducerTutorial
@@ -47,6 +55,14 @@ __all__ = [
     "OnboardingStatus",
     "TutorialType",
     "TutorialStatus",
+    "DriverAccountStatus",
+    "DriverApplicationStatus",
+    "DriverOtpStatus",
+    "DailyCheckInStatus",
+    "DailyCheckInPhotoKind",
+    "MediaFileOwnerType",
+    "DailyCheckIn",
+    "DailyCheckInPhoto",
     "DistributionCenter",
     "RegionPricing",
     "ProductCategory",
@@ -55,6 +71,12 @@ __all__ = [
     "ProducerSKU",
     "ProducerTutorial",
     "TemperatureMode",
+    "DriverAccount",
+    "DriverVehicle",
+    "DriverApplication",
+    "DriverTelegramBinding",
+    "MediaFile",
+    "DriverOtpCode",
     "DeliveryList",
     "DeliveryListItem",
     "DeliveryTemplate",

@@ -1,4 +1,5 @@
 """FastAPI dependencies."""
+import uuid
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -6,10 +7,10 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_user_id_from_token
+from app.core.security import get_driver_id_from_token, get_user_id_from_token
 from app.db.base import get_db
-from app.db.models import User
-from app.db.models.enums import OnboardingStatus, UserRole
+from app.db.models import DriverAccount, User
+from app.db.models.enums import DriverAccountStatus, OnboardingStatus, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -137,3 +138,36 @@ async def get_current_active_producer(
         )
 
     return current_user
+
+
+async def get_current_driver(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DriverAccount:
+    """
+    Dependency for driver endpoints. Validates JWT with subject_type=driver and returns DriverAccount.
+    """
+    driver_id_str = get_driver_id_from_token(token)
+    try:
+        driver_uuid = uuid.UUID(driver_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    result = await db.execute(select(DriverAccount).where(DriverAccount.id == driver_uuid))
+    driver = result.scalar_one_or_none()
+    if driver is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Driver not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if driver.status == DriverAccountStatus.BLOCKED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is blocked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return driver

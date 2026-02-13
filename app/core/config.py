@@ -50,6 +50,13 @@ class Settings(BaseSettings):
 
     USE_REAL_EMAIL: bool = False
 
+    TELEGRAM_BOT_TOKEN: str | None = None
+    DRIVER_OTP_UNIVERSAL_CODE: str = "0320"  # dev bypass code
+
+    # Azure Blob Storage (driver documents)
+    AZURE_STORAGE_CONNECTION_STRING: str | None = None
+    AZURE_STORAGE_CONTAINER_DRIVERS: str = "bananay-media"
+
     MAX_DELIVERY_LISTS_PER_USER: int = 20
     MAX_ITEMS_PER_LIST: int = 500
     DEFAULT_SEARCH_RADIUS_METERS: int = 300

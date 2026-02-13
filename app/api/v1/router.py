@@ -1,10 +1,12 @@
 """API v1 router."""
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import (admin_producers, auth, calculator, countries,
-                                  delivery_lists, delivery_orders,
-                                  delivery_point_suggestions, delivery_points,
-                                  delivery_templates, distribution_centers,
+from app.api.v1.endpoints import (admin_daily_checkin, admin_drivers,
+                                  admin_producers, auth, calculator, countries,
+                                  daily_checkin, delivery_lists,
+                                  delivery_orders, delivery_point_suggestions,
+                                  delivery_points, delivery_templates,
+                                  distribution_centers, driver, driver_auth,
                                   producer, producer_sku, product_category,
                                   regions, sectors, settlements, tags,
                                   temperature_mode, tutorials)
@@ -12,10 +14,15 @@ from app.api.v1.endpoints import (admin_producers, auth, calculator, countries,
 api_router = APIRouter(prefix="/v1")
 
 api_router.include_router(auth.router)
+api_router.include_router(driver_auth.router)
+api_router.include_router(driver.router)
+api_router.include_router(daily_checkin.router)
 api_router.include_router(producer.router)
 api_router.include_router(producer_sku.router)
 api_router.include_router(tutorials.router)
 api_router.include_router(admin_producers.router)
+api_router.include_router(admin_drivers.router)
+api_router.include_router(admin_daily_checkin.router)
 api_router.include_router(countries.router)
 api_router.include_router(regions.router)
 api_router.include_router(settlements.router)
