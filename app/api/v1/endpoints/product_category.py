@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
 from app.db.models import ProductCategory, User
-from app.dependencies import get_current_user
+from app.dependencies import get_current_admin
 from app.schemas.product_category import (
     ProductCategoryCreate,
     ProductCategoryResponse,
@@ -50,7 +50,7 @@ async def get_product_category(
 async def create_product_category(
     product_category: ProductCategoryCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
 ) -> ProductCategoryResponse:
     """Create a new product category."""
     await check_unique_fields(
@@ -74,7 +74,7 @@ async def update_product_category(
     product_category_id: int,
     product_category: ProductCategoryUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
 ) -> ProductCategoryResponse:
     """Update a product category."""
     result = await db.execute(
@@ -106,7 +106,7 @@ async def update_product_category(
 async def delete_product_category(
     product_category_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
 ) -> None:
     """Delete a product category."""
     result = await db.execute(

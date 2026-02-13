@@ -9,7 +9,6 @@ from typing import Sequence, Union
 
 from alembic import op
 
-# revision identifiers, used by Alembic.
 revision: str = 'dca6b2a2dc5f'
 down_revision: Union[str, Sequence[str], None] = '109cbe768b76'
 branch_labels: Union[str, Sequence[str], None] = None
@@ -18,40 +17,30 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Rename tables to add geo_ prefix."""
-    # Rename tables (order matters due to foreign key constraints)
-    # PostgreSQL automatically updates FK constraints when renaming tables
 
-    # 1. Independent tables first
     op.rename_table('product_categories', 'geo_product_categories')
     op.rename_table('tags', 'geo_tags')
 
-    # 2. Countries (no dependencies)
     op.rename_table('countries', 'geo_countries')
 
-    # 3. Regions (depends on countries)
     op.rename_table('regions', 'geo_regions')
 
-    # 4. Tables depending on regions
     op.rename_table('sectors', 'geo_sectors')
     op.rename_table('distribution_centers', 'geo_distribution_centers')
     op.rename_table('region_pricing', 'geo_region_pricing')
     op.rename_table('settlements', 'geo_settlements')
 
-    # 5. Districts (depends on settlements)
     op.rename_table('districts', 'geo_districts')
 
-    # 6. Categories
     op.rename_table('categories', 'geo_categories')
     op.rename_table('subcategories', 'geo_subcategories')
 
-    # 7. Delivery points and junction table (depends on settlements, districts, categories, subcategories)
     op.rename_table('delivery_points', 'geo_delivery_points')
     op.rename_table('delivery_point_tags', 'geo_delivery_point_tags')
 
 
 def downgrade() -> None:
     """Remove geo_ prefix from tables."""
-    # Reverse order of upgrade
     op.rename_table('geo_delivery_point_tags', 'delivery_point_tags')
     op.rename_table('geo_delivery_points', 'delivery_points')
 

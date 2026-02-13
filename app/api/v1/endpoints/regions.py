@@ -7,12 +7,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.db.base import get_db
-from app.db.models import (DistributionCenter, Region, RegionPricing, Sector,
-                           Settlement, User)
-from app.dependencies import get_current_user
-from app.schemas.region import (RegionDetailResponse, RegionListResponse,
-                                RegionPricingCreate, RegionPricingResponse,
-                                RegionPricingUpdate, RegionStatsResponse)
+from app.db.models import (
+    DistributionCenter,
+    Region,
+    RegionPricing,
+    Sector,
+    Settlement,
+    User,
+)
+from app.dependencies import get_current_admin
+from app.schemas.region import (
+    RegionDetailResponse,
+    RegionListResponse,
+    RegionPricingCreate,
+    RegionPricingResponse,
+    RegionPricingUpdate,
+    RegionStatsResponse,
+)
 
 router = APIRouter(prefix="/regions", tags=["Regions"])
 
@@ -149,7 +160,7 @@ async def create_region_pricing(
     region_id: int,
     pricing_data: RegionPricingCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
 ) -> RegionPricingResponse:
     """
     Create region pricing parameters.
@@ -168,7 +179,6 @@ async def create_region_pricing(
     - **404**: Region not found
     - **409**: Pricing already exists for this region
     """
-    # Check if region exists
     query = (
         select(Region)
         .options(joinedload(Region.pricing))
@@ -184,14 +194,12 @@ async def create_region_pricing(
             detail=f"Region with id {region_id} not found",
         )
 
-    # Check if pricing already exists
     if region.pricing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Pricing already exists for region {region_id}. Use PATCH to update.",
         )
 
-    # Create new pricing
     pricing = RegionPricing(
         region_id=region_id,
         driver_hourly_rate=pricing_data.driver_hourly_rate,
@@ -225,7 +233,7 @@ async def update_region_pricing(
     region_id: int,
     pricing_update: RegionPricingUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    curent_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
 ) -> RegionPricingResponse:
     """
     Update region pricing parameters (partial update).

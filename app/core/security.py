@@ -47,6 +47,25 @@ def create_refresh_token(data: dict) -> str:
     return encoded_jwt
 
 
+def create_driver_access_token(driver_id: str, expires_delta: timedelta | None = None) -> str:
+    """Create JWT access token for driver (subject_type=driver)."""
+    data = {"sub": driver_id, "subject_type": "driver"}
+    return create_access_token(data, expires_delta=expires_delta)
+
+
+def create_driver_refresh_token(driver_id: str) -> str:
+    """Create JWT refresh token for driver."""
+    to_encode = {
+        "sub": driver_id,
+        "subject_type": "driver",
+        "type": "refresh",
+    }
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire, "iat": now})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
 def decode_token(token: str) -> dict:
     """Decode and validate JWT token."""
     try:
@@ -65,8 +84,15 @@ def decode_token(token: str) -> dict:
 
 
 def get_user_id_from_token(token: str) -> int:
-    """Extract user ID from JWT token."""
+    """Extract user ID from JWT token (subject_type=user or no subject_type)."""
     payload = decode_token(token)
+    subject_type = payload.get("subject_type")
+    if subject_type == "driver":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type for this endpoint",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     user_id: str | None = payload.get("sub")
     if user_id is None:
         raise HTTPException(
@@ -82,3 +108,22 @@ def get_user_id_from_token(token: str) -> int:
             detail="Invalid token format",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+def get_driver_id_from_token(token: str) -> str:
+    """Extract driver ID (UUID string) from JWT token. Requires subject_type=driver."""
+    payload = decode_token(token)
+    if payload.get("subject_type") != "driver":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Driver token required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    driver_id: str | None = payload.get("sub")
+    if not driver_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return driver_id

@@ -17,8 +17,8 @@ from sqlalchemy import text
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.db.base import engine  # noqa: E402
-from app.db.models import Sector  # noqa: E402
+from app.db.base import engine
+from app.db.models import Sector
 
 
 async def import_sectors(geojson_path: str, region_id: int = 1):

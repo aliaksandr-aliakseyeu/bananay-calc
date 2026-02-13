@@ -1,11 +1,14 @@
 """FastAPI application."""
 import asyncio
 import logging
+import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -56,7 +59,31 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-# CORS middleware
+
+@app.middleware("http")
+async def add_request_timing(request: Request, call_next):
+    """Add request timing and logging."""
+    start_time = time.time()
+
+    response = await call_next(request)
+
+    process_time = (time.time() - start_time) * 1000  # Convert to ms
+    response.headers["X-Process-Time"] = f"{process_time:.2f}ms"
+
+    if process_time > 1000:
+        logger.warning(
+            f"⚠️  SLOW REQUEST: {request.method} {request.url.path} "
+            f"took {process_time:.2f}ms"
+        )
+    elif request.url.path.startswith("/api/"):
+        logger.info(
+            f"✅ {request.method} {request.url.path} "
+            f"completed in {process_time:.2f}ms"
+        )
+
+    return response
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -66,6 +93,10 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api")
+
+public_path = Path(__file__).parent.parent / "public"
+if public_path.exists():
+    app.mount("/public", StaticFiles(directory=str(public_path)), name="public")
 
 
 @app.get("/", tags=["Root"])
@@ -138,7 +169,6 @@ async def get_project_overview():
 
     markdown_content = doc_path.read_text(encoding="utf-8")
 
-    # HTML template with GitHub-like styling
     html_template = r"""
     <!DOCTYPE html>
     <html lang="ru">
@@ -321,7 +351,6 @@ async def get_project_overview():
     </html>
     """
 
-    # Escape backticks in markdown for JS template literal
     escaped_content = markdown_content.replace('`', '\\`').replace('${', '\\${')
     html = html_template.replace('MARKDOWN_CONTENT_PLACEHOLDER', escaped_content)
 

@@ -1,5 +1,10 @@
 """Pydantic schemas."""
-from app.schemas.auth import (RefreshTokenRequest, Token, UserCreate,
+from app.schemas.auth import (EmailVerificationRequest,
+                              OnboardingStatusResponse,
+                              ProducerProfileComplete, ProducerProfileCreate,
+                              ProducerProfileResponse, ProducerProfileUpdate,
+                              ProducerRegistration, ProducerStatistics,
+                              RefreshTokenRequest, Token, UserCreate,
                               UserLogin, UserResponse)
 from app.schemas.country import CountryResponse
 from app.schemas.delivery_point import (BoundingBox, DeliveryPointResponse,
@@ -23,6 +28,10 @@ from app.schemas.tag import TagResponse
 from app.schemas.temperature_mode import (TemperatureModeCreate,
                                           TemperatureModeResponse,
                                           TemperatureModeUpdate)
+from app.schemas.tutorial import (TooltipsToggleRequest, TutorialCreate,
+                                  TutorialResetRequest, TutorialResponse,
+                                  TutorialsSummaryResponse,
+                                  TutorialStatusUpdate, TutorialUpdate)
 
 __all__ = [
     "Token",
@@ -30,6 +39,14 @@ __all__ = [
     "UserResponse",
     "UserCreate",
     "RefreshTokenRequest",
+    "ProducerProfileCreate",
+    "ProducerProfileResponse",
+    "ProducerProfileUpdate",
+    "ProducerRegistration",
+    "ProducerProfileComplete",
+    "ProducerStatistics",
+    "EmailVerificationRequest",
+    "OnboardingStatusResponse",
     "CountryResponse",
     "RegionListResponse",
     "RegionDetailResponse",
@@ -59,4 +76,11 @@ __all__ = [
     "TemperatureModeCreate",
     "TemperatureModeResponse",
     "TemperatureModeUpdate",
+    "TutorialCreate",
+    "TutorialUpdate",
+    "TutorialStatusUpdate",
+    "TutorialResponse",
+    "TutorialsSummaryResponse",
+    "TooltipsToggleRequest",
+    "TutorialResetRequest",
 ]

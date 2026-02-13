@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
 from app.db.models import TemperatureMode, User
-from app.dependencies import get_current_user
+from app.dependencies import get_current_admin
 from app.schemas.temperature_mode import (
     TemperatureModeCreate,
     TemperatureModeResponse,
@@ -50,10 +50,9 @@ async def get_temperature_mode(
 async def create_temperature_mode(
     temperature_mode: TemperatureModeCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
 ) -> TemperatureModeResponse:
     """Create a new temperature mode."""
-    # Check uniqueness of name and slug
     await check_unique_fields(
         db=db,
         model=TemperatureMode,
@@ -75,7 +74,7 @@ async def update_temperature_mode(
     temperature_mode_id: int,
     temperature_mode: TemperatureModeUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
 ) -> TemperatureModeResponse:
     """Update a temperature mode."""
     result = await db.execute(
@@ -85,7 +84,6 @@ async def update_temperature_mode(
     if not db_temperature_mode:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Temperature mode not found")
 
-    # Check uniqueness of name and slug (excluding current record)
     await check_unique_fields(
         db=db,
         model=TemperatureMode,
@@ -108,7 +106,7 @@ async def update_temperature_mode(
 async def delete_temperature_mode(
     temperature_mode_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
 ) -> None:
     """Delete a temperature mode."""
     result = await db.execute(

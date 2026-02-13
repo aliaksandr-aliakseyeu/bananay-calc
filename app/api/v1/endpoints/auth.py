@@ -1,4 +1,5 @@
 """Authentication endpoints."""
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -6,30 +7,38 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import (create_access_token, create_refresh_token,
-                               decode_token, verify_password)
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    get_password_hash,
+    verify_password,
+)
 from app.db.base import get_db
-from app.db.models import User
+from app.db.models import OnboardingStatus, ProducerProfile, User, UserRole
 from app.dependencies import get_current_user
-from app.schemas.auth import RefreshTokenRequest, Token, UserResponse
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    EmailVerificationRequest,
+    ProducerRegistration,
+    RefreshTokenRequest,
+    Token,
+    UserResponse,
+)
+from app.services.email_service import email_service
+from app.services.verification_service import verification_service
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.post("/login", response_model=Token)
-async def login(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> Token:
-    """
-    Login endpoint.
-
-    Authenticate user with email and password.
-    Returns access token and refresh token.
-
-    **Note:** Use email as username in the form.
-    """
-    result = await db.execute(select(User).where(User.email == form_data.username))
+async def _authenticate_user(
+    username: str,
+    password: str,
+    db: AsyncSession,
+    required_role: UserRole | None = None,
+) -> User:
+    """Helper function to authenticate user."""
+    result = await db.execute(select(User).where(User.email == username))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -45,12 +54,74 @@ async def login(
             detail="User account is disabled",
         )
 
-    if not verify_password(form_data.password, user.hashed_password):
+    if not verify_password(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    if required_role and user.role != required_role:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
+
+
+@router.post("/login/producer", response_model=Token)
+async def login_producer(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Token:
+    """
+    Producer login endpoint.
+
+    Authenticate producer with email and password.
+    Returns access token and refresh token.
+
+    **Note:** Use email as username in the form.
+    **Only for producer accounts.**
+    """
+    user = await _authenticate_user(
+        form_data.username,
+        form_data.password,
+        db,
+        required_role=UserRole.PRODUCER,
+    )
+
+    access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+    )
+
+
+@router.post("/login/admin", response_model=Token)
+async def login_admin(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Token:
+    """
+    Admin login endpoint.
+
+    Authenticate admin with email and password.
+    Returns access token and refresh token.
+
+    **Note:** Use email as username in the form.
+    **Only for admin accounts.**
+    """
+    user = await _authenticate_user(
+        form_data.username,
+        form_data.password,
+        db,
+        required_role=UserRole.ADMIN,
+    )
 
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
@@ -135,3 +206,121 @@ async def get_current_user_info(
     Returns information about the authenticated user.
     """
     return UserResponse.model_validate(current_user)
+
+
+@router.post("/register/producer", status_code=status.HTTP_201_CREATED)
+async def register_producer(
+    registration_data: ProducerRegistration,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """
+    Register a new producer (Step 1).
+
+    Creates user account and producer profile with company name.
+    Sends email verification link.
+
+    Next steps:
+    1. User must verify email
+    2. User must complete profile (contact_person, phone)
+    3. Wait for admin approval
+    """
+    result = await db.execute(select(User).where(User.email == registration_data.email))
+    existing_user = result.scalar_one_or_none()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
+
+    user = User(
+        email=registration_data.email,
+        hashed_password=get_password_hash(registration_data.password),
+        role=UserRole.PRODUCER,
+        onboarding_status=OnboardingStatus.PENDING_EMAIL_VERIFICATION,
+        email_verified=False,
+        is_approved=False,
+    )
+
+    db.add(user)
+    await db.flush()
+
+    producer_profile = ProducerProfile(
+        user_id=user.id,
+        company_name=registration_data.company_name,
+    )
+
+    db.add(producer_profile)
+    await db.commit()
+
+    verification_token = verification_service.create_email_verification_token(user.id)
+
+    email_service.send_verification_email(user.email, verification_token)
+
+    return {
+        "message": "Registration successful. Please check your email to verify your account.",
+        "email": user.email,
+    }
+
+
+@router.post("/verify-email")
+async def verify_email(
+    verification_request: EmailVerificationRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """
+    Verify email address.
+
+    Validates verification token and marks email as verified.
+    Updates onboarding status to pending_profile_completion.
+    """
+    user_id = verification_service.verify_email_verification_token(verification_request.token)
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if user.email_verified:
+        return {"message": "Email already verified"}
+
+    user.email_verified = True
+    user.email_verified_at = datetime.now(timezone.utc)
+    user.onboarding_status = OnboardingStatus.PENDING_PROFILE_COMPLETION
+
+    await db.commit()
+
+    return {
+        "message": "Email verified successfully. Please complete your profile.",
+    }
+
+
+@router.post("/change-password")
+async def change_password(
+    password_request: ChangePasswordRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """
+    Change user password.
+
+    Validates current password and sets new password.
+    """
+    if not verify_password(password_request.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    current_user.hashed_password = get_password_hash(password_request.new_password)
+    current_user.updated_at = datetime.now(timezone.utc)
+
+    await db.commit()
+
+    return {
+        "message": "Password changed successfully",
+    }

@@ -22,8 +22,9 @@ logger = logging.getLogger(__name__)
     status_code=status.HTTP_200_OK,
     summary="Calculate delivery cost by delivery points",
     description=(
-        "Calculate delivery cost based on specific delivery points. "
-        "The number of points and sectors is automatically determined from the provided IDs."
+        "Calculate delivery cost based on specific delivery points with quantities. "
+        "The total quantity is calculated as the sum of all point quantities, "
+        "and the number of regions is determined from unique regions containing the points."
     ),
 )
 async def calculate_by_points(
@@ -31,25 +32,29 @@ async def calculate_by_points(
     db: AsyncSession = Depends(get_db),
 ) -> CalculatorByPointsResponse:
     """
-    Calculate delivery costs using specific delivery points.
+    Calculate delivery costs using specific delivery points with quantities.
 
     - **region_id**: Region ID
     - **supplier_location**: Supplier coordinates (latitude, longitude)
     - **product**: Product parameters (dimensions, weight, quantity per box)
-    - **delivery_point_ids**: List of delivery point IDs
+    - **point_quantities**: List of delivery points with their quantities
 
     Returns delivery cost for the supplier's product and information about
-    the number of used/ignored delivery points.
+    the total quantity and number of unique regions.
     """
     try:
         calculator = CalculatorService(db)
+
+        point_quantities = [
+            (pq.point_id, pq.quantity) for pq in request.point_quantities
+        ]
 
         result = await calculator.calculate_by_points(
             region_id=request.region_id,
             supplier_lat=request.supplier_location.latitude,
             supplier_lon=request.supplier_location.longitude,
             product=request.product,
-            delivery_point_ids=request.delivery_point_ids,
+            point_quantities=point_quantities,
         )
 
         return CalculatorByPointsResponse(**result)

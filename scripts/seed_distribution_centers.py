@@ -16,14 +16,13 @@ from sqlalchemy import select, text
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.core.config import settings  # noqa: E402
-from app.db.base import engine  # noqa: E402
-from app.db.models import DistributionCenter  # noqa: E402
+from app.core.config import settings
+from app.db.base import engine
+from app.db.models import DistributionCenter
 
 YANDEX_API_KEY = settings.YANDEX_API_KEY
 YANDEX_GEOCODER_URL = "https://geocode-maps.yandex.ru/1.x/"
 
-# Данные распределительных центров
 DISTRIBUTION_CENTERS = [
     {
         "address": "Краснодарский край, городской округ Сочи, село Казачий Брод, Краснофлотская улица, 27",
@@ -170,7 +169,6 @@ async def seed_distribution_centers():
                 if existing:
                     print(f"  ~ Already exists (id={existing})")
                 else:
-                    # Создаем новый РЦ
                     await conn.execute(
                         text("""
                             INSERT INTO distribution_centers

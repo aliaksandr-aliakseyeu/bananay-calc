@@ -143,6 +143,60 @@ class CalculatorService:
 
         return num_valid_points, num_sectors, num_ignored
 
+    async def get_delivery_info_from_point_quantities(
+        self,
+        point_quantities: list[tuple[int, int]],
+    ) -> tuple[int, int, int]:
+        """
+        Get delivery information from delivery point IDs with quantities.
+
+        Calculates total quantity sum and unique regions count.
+
+        Args:
+            point_quantities: List of tuples (delivery_point_id, quantity)
+
+        Returns:
+            Tuple of (total_quantity, num_regions, num_ignored_points)
+        """
+        from app.db.models.settlement import Settlement
+
+        point_ids = [point_id for point_id, _ in point_quantities]
+        quantity_map = {point_id: quantity for point_id, quantity in point_quantities}
+
+        result = await self.db.execute(
+            select(DeliveryPoint, Settlement.region_id)
+            .join(Settlement, DeliveryPoint.settlement_id == Settlement.id)
+            .where(
+                DeliveryPoint.id.in_(point_ids),
+                DeliveryPoint.is_active == True  # noqa: E712
+            )
+        )
+
+        valid_points = result.all()
+
+        total_quantity = 0
+        unique_regions = set()
+        valid_point_ids = set()
+
+        for point, region_id in valid_points:
+            point_id = point.id
+            valid_point_ids.add(point_id)
+            total_quantity += quantity_map[point_id]
+            unique_regions.add(region_id)
+
+        num_regions = len(unique_regions)
+        num_ignored = len(point_ids) - len(valid_point_ids)
+
+        logger.info(
+            "Delivery points: %d valid, %d ignored, total quantity: %d, unique regions: %d",
+            len(valid_point_ids),
+            num_ignored,
+            total_quantity,
+            num_regions
+        )
+
+        return total_quantity, num_regions, num_ignored
+
     async def get_max_sectors_for_region(self, region_id: int) -> int:
         """Get total number of sectors for region."""
         result = await self.db.execute(
@@ -297,17 +351,17 @@ class CalculatorService:
         supplier_lat: float,
         supplier_lon: float,
         product: ProductParams,
-        delivery_point_ids: list[int],
+        point_quantities: list[tuple[int, int]],
     ) -> dict[str, Any]:
         """
-        Calculate delivery costs using specific delivery points.
+        Calculate delivery costs using specific delivery points with quantities.
 
         Args:
             region_id: Region ID
             supplier_lat: Supplier latitude
             supplier_lon: Supplier longitude
             product: Product parameters
-            delivery_point_ids: List of delivery point IDs
+            point_quantities: List of tuples (delivery_point_id, quantity)
 
         Returns:
             Dictionary with calculation results
@@ -318,12 +372,14 @@ class CalculatorService:
         pricing = await self.get_region_pricing(region_id)
         if not pricing:
             raise ValueError(f"Pricing not configured for region {region_id}")
-        num_points, num_sectors, num_ignored = await self.get_delivery_info_from_points(
-            delivery_point_ids, region_id
+
+        total_quantity, num_regions, num_ignored = await self.get_delivery_info_from_point_quantities(
+            point_quantities
         )
 
-        if num_points == 0:
+        if total_quantity == 0:
             raise ValueError("No valid delivery points provided")
+
         dc_info = await self.get_nearest_distribution_center(
             supplier_lat, supplier_lon, region_id
         )
@@ -331,8 +387,9 @@ class CalculatorService:
             raise ValueError("No distribution centers found")
 
         dc, distance_km, distance_method = dc_info
+
         costs = self.calculate_delivery_costs(
-            pricing, distance_km, num_points, num_sectors
+            pricing, distance_km, total_quantity, num_regions
         )
         fitting = self.calculate_product_fitting(pricing, product)
 
@@ -348,9 +405,9 @@ class CalculatorService:
             "items_in_standard_box": fitting["items_in_standard_box"],
             "cost_per_item": final["cost_per_item"],
             "cost_per_supplier_box": final["cost_per_supplier_box"],
-            "delivery_points_used": num_points,
+            "total_quantity": total_quantity,
             "delivery_points_ignored": num_ignored,
-            "sectors_count": num_sectors,
+            "regions_count": num_regions,
             "distance_to_dc_km": Decimal(str(distance_km)).quantize(Decimal("0.01")),
             "nearest_dc_name": dc.name,
         }

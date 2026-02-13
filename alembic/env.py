@@ -1,4 +1,3 @@
-# Import settings
 import sys
 from logging.config import fileConfig
 from pathlib import Path
@@ -8,30 +7,19 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-# Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.core.config import settings
-# Import all models so Alembic can detect them
-# Импорт необходим, чтобы классы загрузились и зарегистрировались в Base.metadata
-from app.db import models  # noqa: F401 - импорт для side-effect
+from app.db import models
 from app.db.base import Base
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
 config = context.config
 
-# Override sqlalchemy.url with our settings
-# Escape % for configparser (% is used for interpolation, so we need %%)
 config.set_main_option("sqlalchemy.url", settings.database_url_sync.replace('%', '%%'))
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
 target_metadata = Base.metadata
 
 
@@ -40,7 +28,6 @@ def include_object(object, name, type_, reflected, compare_to):
     Игнорируем служебные таблицы PostGIS при autogenerate.
     """
     if type_ == "table" and name in {
-        # PostGIS Tiger Geocoder tables
         'addr', 'addrfeat', 'bg', 'county', 'county_lookup', 'countysub_lookup',
         'cousub', 'direction_lookup', 'edges', 'faces', 'featnames',
         'geocode_settings', 'geocode_settings_default', 'layer', 'loader_lookuptables',
@@ -53,10 +40,6 @@ def include_object(object, name, type_, reflected, compare_to):
         return False
     return alembic_helpers.include_object(object, name, type_, reflected, compare_to)
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
 
 
 def run_migrations_offline() -> None:
@@ -77,7 +60,6 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        # PostGIS support + ignore tiger geocoder tables
         include_object=include_object,
         process_revision_directives=alembic_helpers.writer,
         render_item=alembic_helpers.render_item,
@@ -104,7 +86,6 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            # PostGIS support + ignore tiger geocoder tables
             include_object=include_object,
             process_revision_directives=alembic_helpers.writer,
             render_item=alembic_helpers.render_item,

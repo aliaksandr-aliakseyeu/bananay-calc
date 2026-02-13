@@ -3,8 +3,12 @@ import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from geoalchemy2.functions import (ST_AsGeoJSON, ST_GeomFromGeoJSON,
-                                   ST_MakeEnvelope, ST_Within)
+from geoalchemy2.functions import (
+    ST_AsGeoJSON,
+    ST_GeomFromGeoJSON,
+    ST_MakeEnvelope,
+    ST_Within,
+)
 from sqlalchemy import and_, case, delete, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,12 +16,14 @@ from app.core.config import settings
 from app.db.base import get_db
 from app.db.models import DeliveryPoint, Sector, Settlement, Tag, User
 from app.db.models.delivery_point import delivery_point_tags
-from app.dependencies import get_current_user
-from app.schemas.delivery_point import (DeliveryPointCreate,
-                                        DeliveryPointDetailResponse,
-                                        DeliveryPointSearchRequest,
-                                        DeliveryPointSearchResponse,
-                                        DeliveryPointUpdate)
+from app.dependencies import get_current_admin
+from app.schemas.delivery_point import (
+    DeliveryPointCreate,
+    DeliveryPointDetailResponse,
+    DeliveryPointSearchRequest,
+    DeliveryPointSearchResponse,
+    DeliveryPointUpdate,
+)
 from app.utils import normalize_name
 
 router = APIRouter(prefix="/delivery-points", tags=["Delivery Points"])
@@ -259,7 +265,7 @@ async def get_delivery_point(
 async def create_delivery_point(
     data: DeliveryPointCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    curent_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
 ) -> dict:
     """Create a new delivery point."""
     settlement_query = select(Settlement.id).where(Settlement.id == data.settlement_id)
@@ -323,7 +329,7 @@ async def update_delivery_point(
     delivery_point_id: int,
     data: DeliveryPointUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    curent_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
 ) -> dict:
     """Update an existing delivery point."""
     query = select(DeliveryPoint).where(DeliveryPoint.id == delivery_point_id)
@@ -387,7 +393,7 @@ async def update_delivery_point(
 async def delete_delivery_point(
     delivery_point_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
-    curent_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
 ) -> None:
     """Delete a delivery point."""
     query = select(DeliveryPoint).where(DeliveryPoint.id == delivery_point_id)

@@ -11,7 +11,6 @@ import sqlalchemy as sa
 
 from alembic import op
 
-# revision identifiers, used by Alembic.
 revision: str = '13d596b1b334'
 down_revision: Union[str, Sequence[str], None] = 'eaed51cb9bb2'
 branch_labels: Union[str, Sequence[str], None] = None
@@ -20,7 +19,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Create geo_users table for authentication
     op.create_table(
         'geo_users',
         sa.Column('id', sa.Integer(), nullable=False),
