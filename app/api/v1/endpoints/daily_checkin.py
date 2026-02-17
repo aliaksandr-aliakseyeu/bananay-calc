@@ -1,19 +1,29 @@
 """Daily check-in (ЕКФ) API for drivers."""
+import asyncio
+import json
 from datetime import date, datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.db.base import get_db
-from app.db.models import (DailyCheckIn, DailyCheckInPhoto,
-                           DailyCheckInPhotoKind, DailyCheckInStatus,
-                           DriverAccount, DriverVehicle, MediaFile,
-                           MediaFileOwnerType)
-from app.dependencies import get_current_driver
+from app.db.models import (
+    DailyCheckIn,
+    DailyCheckInPhoto,
+    DailyCheckInPhotoKind,
+    DailyCheckInStatus,
+    DriverAccount,
+    DriverVehicle,
+    MediaFile,
+    MediaFileOwnerType,
+)
+from app.dependencies import get_current_driver, get_current_driver_from_query
 from app.schemas.daily_checkin import (
     CheckInPhotoResponse,
     CheckInResponse,
@@ -21,6 +31,7 @@ from app.schemas.daily_checkin import (
     StartCheckInRequest,
 )
 from app.services.azure_blob_service import upload_blob
+from app.services.sse_manager import driver_sse_manager
 
 router = APIRouter(prefix="/driver/daily-checkin", tags=["Driver - Daily Check-in"])
 
@@ -98,6 +109,44 @@ async def get_today_checkin(
         has_checkin=True,
         is_complete=is_complete,
         checkin=_checkin_to_response(checkin),
+    )
+
+
+async def _sse_stream_for_driver(driver_id: UUID, queue: asyncio.Queue):
+    """Async generator: yield SSE-formatted messages. Send heartbeat if no event within interval."""
+    driver_id_str = str(driver_id)
+    try:
+        while True:
+            try:
+                payload = await asyncio.wait_for(queue.get(), timeout=settings.SSE_HEARTBEAT_INTERVAL)
+            except asyncio.TimeoutError:
+                yield ": heartbeat\n\n"
+                continue
+            event_name = payload.get("event", "message")
+            data_str = json.dumps(payload, ensure_ascii=False)
+            yield f"event: {event_name}\ndata: {data_str}\n\n"
+    finally:
+        driver_sse_manager.unsubscribe(driver_id_str, queue)
+
+
+@router.get("/stream")
+async def stream_daily_checkin_events(
+    driver: Annotated[DriverAccount, Depends(get_current_driver_from_query)],
+):
+    """
+    Server-Sent Events stream for the current driver.
+    Subscribe to get real-time updates (e.g. daily check-in status approved/rejected).
+    Pass token in query: ?token=<access_token> (EventSource does not send Authorization header).
+    """
+    queue = driver_sse_manager.subscribe(str(driver.id))
+    return StreamingResponse(
+        _sse_stream_for_driver(driver.id, queue),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

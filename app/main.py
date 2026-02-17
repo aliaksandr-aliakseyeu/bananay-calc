@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.db.base import engine
+from app.services.daily_checkin_listener import run_daily_checkin_listener
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +28,17 @@ async def lifespan(app: FastAPI):
     logger.info(f"  - timeout: {engine.pool._timeout}")
     logger.info(f"  - recycle: {engine.pool._recycle}")
 
+    listener_task = asyncio.create_task(run_daily_checkin_listener())
+
     yield
 
     try:
         logger.info("🛑 Application shutting down...")
+        listener_task.cancel()
+        try:
+            await listener_task
+        except asyncio.CancelledError:
+            pass
         logger.info("📊 Final pool stats:")
         logger.info(f"  - checked out connections: {engine.pool.checkedout()}")
 
