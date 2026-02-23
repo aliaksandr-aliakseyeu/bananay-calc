@@ -63,9 +63,18 @@ class Settings(BaseSettings):
 
     SSE_HEARTBEAT_INTERVAL: int = 30
 
+    # Driver location tracking
+    DRIVER_LOCATION_SEND_INTERVAL_SEC: int = 15
+    """How often driver should POST location updates (client uses this as hint)."""
+    DRIVER_LOCATION_POLL_INTERVAL_SEC: int = 10
+    """How often to poll location when using polling (client hint)."""
+    DRIVER_LOCATION_STALE_AFTER_SEC: int = 120
+    """Consider location stale after this many seconds (for is_stale flag)."""
+
     model_config = SettingsConfigDict(
         env_file=".env",
-        case_sensitive=True
+        case_sensitive=True,
+        extra="ignore",  # allow .env vars not in Settings (e.g. DRIVER_TOKEN for scripts)
     )
 
     @property

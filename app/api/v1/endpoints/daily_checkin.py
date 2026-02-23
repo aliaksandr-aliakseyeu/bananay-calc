@@ -416,4 +416,3 @@ async def get_checkin_media(
 
     content, content_type = out
     return Response(content=content, media_type=media.content_type or content_type)
-    return Response(content=content, media_type=media.content_type or content_type)

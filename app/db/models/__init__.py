@@ -7,6 +7,15 @@ from app.db.models.delivery_order import (DeliveryOrder, DeliveryOrderItem,
                                           DeliveryOrderStatusHistory,
                                           DeliveryPointStatus, OrderPriority,
                                           OrderStatus)
+from app.db.models.delivery_task import (
+    DeliveryOrderItemDCAllocation,
+    DeliveryOrderItemDCStatus,
+    DriverDeliveryTask,
+    DriverTaskDCDelivery,
+    DriverTaskDCStatus,
+    DriverTaskStatus,
+    ItemDCStatus,
+)
 from app.db.models.delivery_point import DeliveryPoint, delivery_point_tags
 from app.db.models.delivery_point_suggestion import (
     DeliveryPointSuggestion, delivery_point_suggestion_tags)
@@ -18,6 +27,7 @@ from app.db.models.driver_account import DriverAccount
 from app.db.models.driver_application import DriverApplication
 from app.db.models.driver_otp_code import DriverOtpCode
 from app.db.models.driver_telegram_binding import DriverTelegramBinding
+from app.db.models.driver_location import DriverLastLocation
 from app.db.models.driver_vehicle import DriverVehicle
 from app.db.models.enums import (DailyCheckInPhotoKind, DailyCheckInStatus,
                                  DriverAccountStatus, DriverApplicationStatus,
@@ -76,6 +86,7 @@ __all__ = [
     "DriverApplication",
     "DriverTelegramBinding",
     "MediaFile",
+    "DriverLastLocation",
     "DriverOtpCode",
     "DeliveryList",
     "DeliveryListItem",
@@ -88,4 +99,11 @@ __all__ = [
     "OrderStatus",
     "OrderPriority",
     "DeliveryPointStatus",
+    "DeliveryOrderItemDCAllocation",
+    "DeliveryOrderItemDCStatus",
+    "DriverDeliveryTask",
+    "DriverTaskDCDelivery",
+    "DriverTaskStatus",
+    "DriverTaskDCStatus",
+    "ItemDCStatus",
 ]

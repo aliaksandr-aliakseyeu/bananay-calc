@@ -211,3 +211,35 @@ async def get_current_driver_from_query(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return driver
+
+
+async def get_current_user_from_query(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    token: Annotated[str | None, Query(alias="token", description="Bearer token for SSE (EventSource)")] = None,
+) -> User:
+    """
+    Same as get_current_user but reads token from query string.
+    Use for SSE endpoint where EventSource cannot send Authorization header.
+    """
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token required (query param: token)",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user_id = get_user_id_from_token(token)
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is disabled",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user

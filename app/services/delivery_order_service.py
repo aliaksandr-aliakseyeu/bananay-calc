@@ -1,5 +1,6 @@
 """Service layer for delivery orders (new structure with templates)."""
 from datetime import datetime, timezone
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,8 +9,14 @@ from sqlalchemy.orm import selectinload
 from app.db.models.delivery_order import (DeliveryOrder, DeliveryOrderItem,
                                           DeliveryOrderItemPoint,
                                           DeliveryOrderStatusHistory,
+                                          DeliveryPointStatus,
                                           OrderStatus)
+from app.db.models.distribution_center import DistributionCenter
+from app.db.models.delivery_task import DriverDeliveryTask, DriverTaskDCDelivery
+from app.db.models.driver_account import DriverAccount
+from app.services.delivery_task_service import DeliveryTaskService
 from app.services.delivery_template_service import DeliveryTemplateService
+from app.services.distance_service import DistanceService
 
 
 async def generate_order_number(db: AsyncSession) -> str:
@@ -125,6 +132,22 @@ class DeliveryOrderService:
 
             await DeliveryTemplateService.increment_usage_count(db, template.id)
 
+        # Create DC allocations: (order_item, dc) -> quantity
+        result = await db.execute(
+            select(DeliveryOrder)
+            .where(DeliveryOrder.id == order.id)
+            .options(
+                selectinload(DeliveryOrder.items)
+                .selectinload(DeliveryOrderItem.points)
+                .selectinload(DeliveryOrderItemPoint.delivery_point),
+            )
+        )
+        order = result.scalar_one()
+        task_service = DeliveryTaskService(db)
+        await task_service.create_dc_allocations_for_order(order)
+        if status == OrderStatus.PENDING:
+            await task_service.create_driver_tasks_for_order(order)
+
         history_entry = DeliveryOrderStatusHistory(
             order_id=order.id,
             changed_by_user_id=user_id,
@@ -138,6 +161,43 @@ class DeliveryOrderService:
         await db.refresh(order)
 
         return order
+
+    @staticmethod
+    async def get_assigned_driver_for_order(
+        db: AsyncSession, order_id: int
+    ) -> dict | None:
+        """Get assigned driver info for order (first driver who took a task)."""
+        result = await db.execute(
+            select(DriverDeliveryTask)
+            .where(
+                DriverDeliveryTask.order_id == order_id,
+                DriverDeliveryTask.driver_id.isnot(None),
+            )
+            .limit(1)
+        )
+        task = result.scalar_one_or_none()
+        if not task or not task.driver_id:
+            return None
+        driver = await db.get(DriverAccount, task.driver_id)
+        if not driver:
+            return None
+        # Full phone for producer (order owner)
+        phone_full = driver.phone_e164 or ""
+        # Masked phone fallback
+        phone = phone_full.replace(" ", "").replace("-", "")
+        digits = "".join(c for c in phone if c.isdigit())
+        if len(digits) >= 4:
+            last4 = digits[-4:]
+            phone_masked = f"+7 *** *** {last4[:2]} {last4[2:]}"
+        else:
+            phone_masked = "+7 *** *** ** **"
+        return {
+            "id": str(driver.id),
+            "full_name": driver.full_name,
+            "phone": phone_full or None,
+            "phone_masked": phone_masked,
+            "city": driver.city,
+        }
 
     @staticmethod
     async def get_order_by_id(
@@ -156,11 +216,89 @@ class DeliveryOrderService:
             query = query.options(
                 selectinload(DeliveryOrder.items).selectinload(
                     DeliveryOrderItem.points
-                )
+                ).selectinload(DeliveryOrderItemPoint.delivery_point),
             )
 
         result = await db.execute(query)
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_order_delivery_centers(
+        db: AsyncSession, order_id: int
+    ) -> list[dict]:
+        """
+        Get unique DCs where goods were delivered for this order (for producer when status is at_dc).
+        Returns list of {id, name, address, lat, lon}.
+        """
+        result = await db.execute(
+            select(DriverDeliveryTask)
+            .where(DriverDeliveryTask.order_id == order_id)
+            .options(
+                selectinload(DriverDeliveryTask.dc_deliveries).selectinload(
+                    DriverTaskDCDelivery.dc
+                )
+            )
+        )
+        tasks = list(result.scalars().all())
+        seen_dc_ids: set[int] = set()
+        out: list[dict] = []
+        distance_service = DistanceService()
+        for task in tasks:
+            for dc_del in task.dc_deliveries or []:
+                if not dc_del.dc or dc_del.dc_id in seen_dc_ids:
+                    continue
+                seen_dc_ids.add(dc_del.dc_id)
+                dc = dc_del.dc
+                try:
+                    lat, lon = distance_service.extract_coordinates(dc.location)
+                except Exception:
+                    continue
+                out.append({
+                    "id": dc.id,
+                    "name": dc.name,
+                    "address": dc.address or None,
+                    "lat": lat,
+                    "lon": lon,
+                })
+        return out
+
+    @staticmethod
+    async def get_order_dc_unload_photos(
+        db: AsyncSession,
+        order: DeliveryOrder,
+    ) -> dict[int, UUID]:
+        """
+        For producer view: map point_id -> unload_photo_media_id for points with status at_dc.
+        Requires order loaded with items, points, and delivery_point.
+        """
+        result = await db.execute(
+            select(DriverDeliveryTask)
+            .where(DriverDeliveryTask.order_id == order.id)
+            .options(selectinload(DriverDeliveryTask.dc_deliveries))
+            .limit(1)
+        )
+        task = result.scalar_one_or_none()
+        if not task or not task.dc_deliveries:
+            return {}
+
+        dc_photo_map: dict[int, UUID] = {}
+        for d in task.dc_deliveries:
+            if d.unload_photo_media_id:
+                dc_photo_map[d.dc_id] = d.unload_photo_media_id
+
+        if not dc_photo_map:
+            return {}
+
+        task_service = DeliveryTaskService(db)
+        point_photo_map: dict[int, UUID] = {}
+        for item in order.items or []:
+            for pt in item.points or []:
+                if pt.status != DeliveryPointStatus.AT_DC or not getattr(pt, "delivery_point", None):
+                    continue
+                dc = await task_service._get_dc_for_point(pt.delivery_point)
+                if dc and dc.id in dc_photo_map:
+                    point_photo_map[pt.id] = dc_photo_map[dc.id]
+        return point_photo_map
 
     @staticmethod
     async def get_user_orders(
@@ -200,6 +338,22 @@ class DeliveryOrderService:
         """Update order status with history logging."""
         old_status = order.status
         order.status = new_status
+
+        # When transitioning DRAFT -> PENDING: create driver tasks
+        if old_status == OrderStatus.DRAFT and new_status == OrderStatus.PENDING:
+            load_result = await db.execute(
+                select(DeliveryOrder)
+                .where(DeliveryOrder.id == order.id)
+                .options(
+                    selectinload(DeliveryOrder.items)
+                    .selectinload(DeliveryOrderItem.points)
+                    .selectinload(DeliveryOrderItemPoint.delivery_point),
+                )
+            )
+            order = load_result.scalar_one()
+            order.status = new_status  # restore after load (DB has old status)
+            task_service = DeliveryTaskService(db)
+            await task_service.create_driver_tasks_for_order(order)
 
         now = datetime.now(timezone.utc)
         if new_status == OrderStatus.IN_TRANSIT_TO_DC:

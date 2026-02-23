@@ -28,6 +28,10 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.db.models.delivery_point import DeliveryPoint
+    from app.db.models.delivery_task import (
+        DeliveryOrderItemDCAllocation,
+        DeliveryOrderItemDCStatus,
+    )
     from app.db.models.delivery_template import DeliveryTemplate
     from app.db.models.producer_sku import ProducerSKU
     from app.db.models.region import Region
@@ -38,6 +42,7 @@ class OrderStatus(str, enum.Enum):
     """Order status enum reflecting multi-stage delivery process"""
     DRAFT = "draft"  # Draft, not yet submitted
     PENDING = "pending"  # Created, waiting to be sent
+    LOADING_AT_WAREHOUSE = "loading_at_warehouse"  # Driver arrived, loading at warehouse
     IN_TRANSIT_TO_DC = "in_transit_to_dc"  # In transit to Distribution Center
     AT_DC = "at_dc"  # At Distribution Center
     DRIVER_ASSIGNED = "driver_assigned"  # Driver assigned for delivery
@@ -58,7 +63,8 @@ class DeliveryPointStatus(str, enum.Enum):
     """Status for individual delivery points"""
     PENDING = "pending"  # Not yet delivered
     IN_TRANSIT = "in_transit"  # Driver on the way
-    DELIVERED = "delivered"  # Successfully delivered
+    AT_DC = "at_dc"  # At distribution center (driver unloaded; courier will deliver to point)
+    DELIVERED = "delivered"  # Successfully delivered to point
     FAILED = "failed"  # Delivery failed
 
 
@@ -169,6 +175,16 @@ class DeliveryOrderItem(Base):
     template: Mapped["DeliveryTemplate | None"] = relationship("DeliveryTemplate", back_populates="order_items")
     producer_sku: Mapped["ProducerSKU"] = relationship("ProducerSKU")
     region: Mapped["Region"] = relationship("Region")
+    dc_allocations: Mapped[list["DeliveryOrderItemDCAllocation"]] = relationship(
+        "DeliveryOrderItemDCAllocation",
+        back_populates="order_item",
+        cascade="all, delete-orphan",
+    )
+    dc_status: Mapped[list["DeliveryOrderItemDCStatus"]] = relationship(
+        "DeliveryOrderItemDCStatus",
+        back_populates="order_item",
+        cascade="all, delete-orphan",
+    )
     points: Mapped[list["DeliveryOrderItemPoint"]] = relationship(
         "DeliveryOrderItemPoint",
         back_populates="order_item",

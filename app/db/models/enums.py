@@ -78,6 +78,7 @@ class MediaFileOwnerType(str, Enum):
     ROUTE_STEP = "route_step"
     VEHICLE = "vehicle"
     DAILY_CHECKIN = "daily_checkin"
+    DRIVER_DELIVERY_TASK = "driver_delivery_task"
 
 
 class DriverOtpStatus(str, Enum):

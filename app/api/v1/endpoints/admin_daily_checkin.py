@@ -22,6 +22,7 @@ from app.schemas.admin_daily_checkin import (
     VehicleShortInfo,
 )
 from app.services.azure_blob_service import download_blob
+from app.services.sse_manager import driver_sse_manager
 
 router = APIRouter(prefix="/admin/daily-checkins", tags=["Admin - Daily Check-ins"])
 
@@ -205,14 +206,21 @@ async def approve_checkin(
     checkin.reviewed_at = datetime.now(timezone.utc)
     checkin.reject_reason = None
 
-    payload = json.dumps({
-        "driver_id": str(checkin.driver_id),
-        "event": "daily_checkin_status",
+    await db.commit()
+
+    sse_payload = {
         "checkin_id": str(checkin_id),
         "status": "approved",
         "reject_reason": None,
+    }
+    driver_sse_manager.send_to_driver(str(checkin.driver_id), "daily_checkin_status", sse_payload)
+
+    notify_payload = json.dumps({
+        "driver_id": str(checkin.driver_id),
+        "event": "daily_checkin_status",
+        **sse_payload,
     })
-    safe_payload = payload.replace("'", "''")
+    safe_payload = notify_payload.replace("'", "''")
     await db.execute(text(f"NOTIFY daily_checkin_events, '{safe_payload}'"))
     await db.commit()
 
@@ -249,14 +257,21 @@ async def reject_checkin(
     checkin.reviewed_at = datetime.now(timezone.utc)
     checkin.reject_reason = body.reason
 
-    payload = json.dumps({
-        "driver_id": str(checkin.driver_id),
-        "event": "daily_checkin_status",
+    await db.commit()
+
+    sse_payload = {
         "checkin_id": str(checkin_id),
         "status": "rejected",
         "reject_reason": body.reason,
+    }
+    driver_sse_manager.send_to_driver(str(checkin.driver_id), "daily_checkin_status", sse_payload)
+
+    notify_payload = json.dumps({
+        "driver_id": str(checkin.driver_id),
+        "event": "daily_checkin_status",
+        **sse_payload,
     })
-    safe_payload = payload.replace("'", "''")
+    safe_payload = notify_payload.replace("'", "''")
     await db.execute(text(f"NOTIFY daily_checkin_events, '{safe_payload}'"))
     await db.commit()
 
