@@ -35,7 +35,6 @@ def _on_notify(connection: asyncpg.Connection, pid: int, channel: str, payload: 
         if not driver_id:
             return
         event = data.get("event", "daily_checkin_status")
-        # Payload for SSE: checkin_id, status, reject_reason (no driver_id/event in data)
         payload = {k: v for k, v in data.items() if k not in ("driver_id", "event")}
         driver_sse_manager.send_to_driver(driver_id, event, payload)
     except (json.JSONDecodeError, KeyError) as e:
@@ -54,7 +53,6 @@ async def run_daily_checkin_listener() -> None:
             conn = await asyncpg.connect(dsn)
             await conn.add_listener(CHANNEL, _on_notify)
             logger.info("daily_checkin_listener: LISTEN on %s", CHANNEL)
-            # Keep connection alive; add_listener keeps it active for notifications
             while True:
                 await asyncio.sleep(3600)
         except asyncio.CancelledError:

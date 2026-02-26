@@ -14,6 +14,11 @@ from app.db.models.delivery_order import (DeliveryOrder, DeliveryOrderItem,
 from app.db.models.distribution_center import DistributionCenter
 from app.db.models.delivery_task import DriverDeliveryTask, DriverTaskDCDelivery
 from app.db.models.driver_account import DriverAccount
+from app.schemas.delivery_order_new import (
+    AssignedDriverInfo,
+    DeliveryCenterInfo,
+    DeliveryOrderDetailResponse,
+)
 from app.services.delivery_task_service import DeliveryTaskService
 from app.services.delivery_template_service import DeliveryTemplateService
 from app.services.distance_service import DistanceService
@@ -132,7 +137,6 @@ class DeliveryOrderService:
 
             await DeliveryTemplateService.increment_usage_count(db, template.id)
 
-        # Create DC allocations: (order_item, dc) -> quantity
         result = await db.execute(
             select(DeliveryOrder)
             .where(DeliveryOrder.id == order.id)
@@ -181,9 +185,7 @@ class DeliveryOrderService:
         driver = await db.get(DriverAccount, task.driver_id)
         if not driver:
             return None
-        # Full phone for producer (order owner)
         phone_full = driver.phone_e164 or ""
-        # Masked phone fallback
         phone = phone_full.replace(" ", "").replace("-", "")
         digits = "".join(c for c in phone if c.isdigit())
         if len(digits) >= 4:
@@ -221,6 +223,121 @@ class DeliveryOrderService:
 
         result = await db.execute(query)
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_order_by_id_any(
+        db: AsyncSession,
+        order_id: int,
+        with_items: bool = False,
+    ) -> DeliveryOrder | None:
+        """Get order by ID without producer check (for internal use, e.g. SSE broadcast)."""
+        query = select(DeliveryOrder).where(DeliveryOrder.id == order_id)
+        if with_items:
+            query = query.options(
+                selectinload(DeliveryOrder.items).selectinload(
+                    DeliveryOrderItem.points
+                ).selectinload(DeliveryOrderItemPoint.delivery_point),
+            )
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_order_snapshot_for_sse(
+        db: AsyncSession, order_id: int
+    ) -> dict | None:
+        """
+        Build full order detail snapshot for producer (same shape as GET order).
+        Used to broadcast order_update over SSE. Returns JSON-serializable dict or None.
+        """
+        order = await DeliveryOrderService.get_order_by_id_any(
+            db, order_id, with_items=True
+        )
+        if not order:
+            return None
+        response = DeliveryOrderDetailResponse.model_validate(order)
+        photo_map = await DeliveryOrderService.get_order_dc_unload_photos(db, order)
+        if photo_map:
+            new_items = []
+            for item in response.items:
+                new_points = [
+                    p.model_copy(update={"dc_unload_photo_media_id": photo_map[p.id]})
+                    if p.id in photo_map
+                    else p
+                    for p in item.points
+                ]
+                new_items.append(item.model_copy(update={"points": new_points}))
+            response = response.model_copy(update={"items": new_items})
+
+        distance_service = DistanceService()
+        new_items = []
+        for idx_i, item in enumerate(response.items):
+            new_points = []
+            for idx_p, pt in enumerate(item.points):
+                lat, lon = None, None
+                delivery_point_name = None
+                delivery_point_address = None
+                orm_pt = (
+                    order.items[idx_i].points[idx_p]
+                    if idx_i < len(order.items)
+                    else None
+                )
+                if orm_pt and getattr(orm_pt, "delivery_point", None):
+                    dp = orm_pt.delivery_point
+                    if getattr(dp, "location", None):
+                        try:
+                            lat, lon = distance_service.extract_coordinates(dp.location)
+                        except Exception:
+                            pass
+                    if getattr(dp, "name", None):
+                        delivery_point_name = dp.name
+                    if getattr(dp, "address", None):
+                        delivery_point_address = dp.address
+                new_points.append(
+                    pt.model_copy(
+                        update={
+                            "lat": lat,
+                            "lon": lon,
+                            "delivery_point_name": delivery_point_name,
+                            "delivery_point_address": delivery_point_address,
+                        }
+                    )
+                )
+            new_items.append(item.model_copy(update={"points": new_points}))
+        response = response.model_copy(update={"items": new_items})
+
+        if order.status in (
+            OrderStatus.DRIVER_ASSIGNED,
+            OrderStatus.LOADING_AT_WAREHOUSE,
+            OrderStatus.IN_DELIVERY,
+            OrderStatus.PARTIALLY_DELIVERED,
+            OrderStatus.IN_TRANSIT_TO_DC,
+            OrderStatus.AT_DC,
+        ):
+            driver_info = await DeliveryOrderService.get_assigned_driver_for_order(
+                db, order_id
+            )
+            if driver_info:
+                response = response.model_copy(
+                    update={"assigned_driver": AssignedDriverInfo(**driver_info)}
+                )
+        if order.status in (
+            OrderStatus.DRIVER_ASSIGNED,
+            OrderStatus.LOADING_AT_WAREHOUSE,
+            OrderStatus.IN_TRANSIT_TO_DC,
+            OrderStatus.AT_DC,
+        ):
+            dc_list = await DeliveryOrderService.get_order_delivery_centers(
+                db, order_id
+            )
+            if dc_list:
+                response = response.model_copy(
+                    update={
+                        "delivery_centers": [
+                            DeliveryCenterInfo(**dc) for dc in dc_list
+                        ]
+                    }
+                )
+        return response.model_dump(mode="json")
 
     @staticmethod
     async def get_order_delivery_centers(
@@ -339,7 +456,6 @@ class DeliveryOrderService:
         old_status = order.status
         order.status = new_status
 
-        # When transitioning DRAFT -> PENDING: create driver tasks
         if old_status == OrderStatus.DRAFT and new_status == OrderStatus.PENDING:
             load_result = await db.execute(
                 select(DeliveryOrder)

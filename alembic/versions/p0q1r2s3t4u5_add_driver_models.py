@@ -21,7 +21,6 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Create driver-related enums and tables."""
 
-    # Create enum types only if not exist (idempotent for failed previous runs)
     enums_to_create = [
         ("driveraccountstatus", "draft", "pending_review", "active", "blocked"),
         ("driverapplicationstatus", "draft", "pending_review", "approved", "rejected"),
@@ -105,7 +104,6 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # driver_otp_codes
     driver_otp_status = postgresql.ENUM(
         "pending",
         "used",
@@ -140,7 +138,6 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # driver_vehicles
     op.create_table(
         "driver_vehicles",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
@@ -184,7 +181,6 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # driver_applications
     driver_application_status = postgresql.ENUM(
         "draft",
         "pending_review",
@@ -253,7 +249,6 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # media_files
     media_file_owner_type = postgresql.ENUM(
         "driver",
         "application",

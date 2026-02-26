@@ -12,23 +12,32 @@ from app.db.base import get_db
 from app.db.models import DriverAccount, DriverDeliveryTask, MediaFile
 from app.db.models.enums import DriverAccountStatus, MediaFileOwnerType
 from app.dependencies import get_current_driver
-from app.schemas.driver_delivery_task import (
-    CompletedTaskResponse,
-    DCDeliveryResponse,
-    DeliveryTaskItem,
-    DriverDeliveryTaskResponse,
-)
-from app.schemas.driver_location import (
-    DriverLocationConfigResponse,
-    DriverLocationReport,
-)
+from app.schemas.driver_delivery_task import (CompletedTaskResponse,
+                                              DCDeliveryResponse,
+                                              DeliveryTaskItem,
+                                              DriverDeliveryTaskResponse,
+                                              ScanQrRequest, ScanQrResponse)
+from app.schemas.driver_location import (DriverLocationConfigResponse,
+                                         DriverLocationReport)
 from app.services.azure_blob_service import upload_driver_task_photo
+from app.services.delivery_order_service import DeliveryOrderService
 from app.services.delivery_task_service import DeliveryTaskService
 from app.services.driver_location_service import report_location
+from app.services.driver_location_sse import driver_location_sse
+from app.services.qr_scan_service import QrScanService
 
 from .driver_common import MAX_FILE_SIZE
 
 router = APIRouter()
+
+
+async def _broadcast_order_update(db: AsyncSession, order_id: int) -> None:
+    """Build order snapshot and broadcast order_update to producer SSE subscribers."""
+    snapshot = await DeliveryOrderService.get_order_snapshot_for_sse(db, order_id)
+    if snapshot is not None:
+        driver_location_sse.broadcast_to_order(
+            order_id, {"event": "order_update", **snapshot}
+        )
 
 
 @router.get(
@@ -138,40 +147,48 @@ async def get_my_delivery_tasks(
         )
     service = DeliveryTaskService(db)
     tasks = await service.get_my_assigned_tasks_for_driver(driver.id)
+    qr_scan_service = QrScanService(db)
 
-    return [
-        DriverDeliveryTaskResponse(
-            task_id=t.task_id,
-            order_id=t.order_id,
-            order_number=t.order_number,
-            warehouse_lat=t.warehouse_lat,
-            warehouse_lon=t.warehouse_lon,
-            deliveries=[
-                DCDeliveryResponse(
-                    dc_id=d.dc_id,
-                    dc_name=d.dc_name,
-                    dc_address=d.dc_address,
-                    dc_lat=d.dc_lat,
-                    dc_lon=d.dc_lon,
-                    items=[
-                        DeliveryTaskItem(
-                            sku_name=i.sku_name,
-                            sku_code=i.sku_code or "",
-                            quantity=i.quantity,
-                        )
-                        for i in d.items
-                    ],
-                    status=getattr(d, "dc_status", None),
-                    delivered_at=getattr(d, "dc_delivered_at", None),
-                    unload_photo_media_id=getattr(d, "unload_photo_media_id", None),
-                )
-                for d in t.deliveries
-            ],
-            status=t.status,
-            loading_photo_media_id=getattr(t, "loading_photo_media_id", None),
+    result = []
+    for t in tasks:
+        loading_status = await qr_scan_service.get_loading_scan_status(t.task_id)
+        expected_count = loading_status[0] if loading_status else 0
+        scanned_count = loading_status[1] if loading_status else 0
+        result.append(
+            DriverDeliveryTaskResponse(
+                task_id=t.task_id,
+                order_id=t.order_id,
+                order_number=t.order_number,
+                warehouse_lat=t.warehouse_lat,
+                warehouse_lon=t.warehouse_lon,
+                deliveries=[
+                    DCDeliveryResponse(
+                        dc_id=d.dc_id,
+                        dc_name=d.dc_name,
+                        dc_address=d.dc_address,
+                        dc_lat=d.dc_lat,
+                        dc_lon=d.dc_lon,
+                        items=[
+                            DeliveryTaskItem(
+                                sku_name=i.sku_name,
+                                sku_code=i.sku_code or "",
+                                quantity=i.quantity,
+                            )
+                            for i in d.items
+                        ],
+                        status=getattr(d, "dc_status", None),
+                        delivered_at=getattr(d, "dc_delivered_at", None),
+                        unload_photo_media_id=getattr(d, "unload_photo_media_id", None),
+                    )
+                    for d in t.deliveries
+                ],
+                status=t.status,
+                loading_photo_media_id=getattr(t, "loading_photo_media_id", None),
+                loading_expected_count=expected_count,
+                loading_scanned_count=scanned_count,
+            )
         )
-        for t in tasks
-    ]
+    return result
 
 
 @router.post(
@@ -201,6 +218,7 @@ async def cancel_delivery_task(
             detail="Task not found, not assigned to you, or cannot be cancelled (already loaded)",
         )
     await db.commit()
+    await _broadcast_order_update(db, task.order_id)
     return {"task_id": task.id, "status": "released"}
 
 
@@ -284,6 +302,7 @@ async def take_delivery_task(
             detail="Task not found or already taken by another driver",
         )
     await db.commit()
+    await _broadcast_order_update(db, task.order_id)
     return {"task_id": task.id, "status": "assigned"}
 
 
@@ -311,7 +330,87 @@ async def start_loading(
             detail="Task not found, not assigned to you, or invalid state (must be assigned)",
         )
     await db.commit()
+    await _broadcast_order_update(db, task.order_id)
     return {"task_id": task.id, "status": "loading"}
+
+
+@router.post(
+    "/delivery-tasks/{task_id}/scan",
+    response_model=ScanQrResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Record QR scan at loading (audit)",
+)
+async def scan_qr_loading(
+    task_id: int,
+    body: ScanQrRequest,
+    driver: Annotated[DriverAccount, Depends(get_current_driver)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ScanQrResponse:
+    """
+    Record a QR scan during loading at the warehouse (audit only).
+
+    Driver must be assigned to this task; task status must be assigned or loading.
+    The item point identified by qr_token must belong to the same order as the task.
+    Does not change order or point status.
+    """
+    if driver.status != DriverAccountStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only active drivers can scan QR",
+        )
+    service = QrScanService(db)
+    try:
+        result = await service.record_loading_scan(
+            task_id=task_id,
+            driver_id=driver.id,
+            qr_token=body.qr_token,
+        )
+    except ValueError as e:
+        msg = str(e)
+        if msg == "qr_token_not_found":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="QR token not found",
+            )
+        if msg == "task_not_found":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found",
+            )
+        if msg == "task_not_assigned_to_driver" or msg == "item_point_not_in_task_order":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Task not assigned to you or item does not belong to this task",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Invalid state for scan (task must be assigned or loading)",
+        )
+
+    # After scan: get counts (includes this scan); first scan -> transition to LOADING
+    status_after = await service.get_loading_scan_status(task_id)
+    expected_count = status_after[0] if status_after else 0
+    scanned_count = status_after[1] if status_after else 0
+
+    task_result = await db.execute(
+        select(DriverDeliveryTask).where(DriverDeliveryTask.id == task_id)
+    )
+    task = task_result.scalar_one_or_none()
+    if task and task.status == "assigned" and scanned_count >= 1:
+        task_service = DeliveryTaskService(db)
+        await task_service.start_loading(task_id, driver.id)
+        await _broadcast_order_update(db, task.order_id)
+
+    await db.commit()
+    return ScanQrResponse(
+        delivery_order_item_point_id=result.delivery_order_item_point_id,
+        order_id=result.order_id,
+        quantity=result.quantity,
+        delivery_point_name=result.delivery_point_name,
+        sku_name=result.sku_name,
+        loading_expected_count=expected_count,
+        loading_scanned_count=scanned_count,
+    )
 
 
 @router.post(
@@ -390,6 +489,7 @@ async def upload_loading_photo(
     task.loading_photo_media_id = media.id
     await db.commit()
     await db.refresh(task)
+    await _broadcast_order_update(db, task.order_id)
     service = DeliveryTaskService(db)
     my_tasks = await service.get_my_assigned_tasks_for_driver(driver.id)
     for t in my_tasks:
@@ -450,6 +550,7 @@ async def depart_from_warehouse(
             detail="Task not found, not assigned to you, or invalid state (must be loading)",
         )
     await db.commit()
+    await _broadcast_order_update(db, task.order_id)
     return {"task_id": task.id, "status": "in_transit"}
 
 
@@ -478,6 +579,7 @@ async def unload_at_dc(
             detail="Task not found, not assigned to you, DC not in task, or already unloaded",
         )
     await db.commit()
+    await _broadcast_order_update(db, task.order_id)
     return {"task_id": task.id, "dc_id": dc_id, "status": "delivered"}
 
 
@@ -508,6 +610,7 @@ async def complete_task(
             detail="Task not found, not assigned to you, or not all DCs unloaded yet",
         )
     await db.commit()
+    await _broadcast_order_update(db, task.order_id)
     return {"task_id": task.id, "status": "delivered"}
 
 
@@ -598,6 +701,7 @@ async def upload_unload_photo(
     await db.flush()
     dc_delivery.unload_photo_media_id = media.id
     await db.commit()
+    await _broadcast_order_update(db, task.order_id)
     service = DeliveryTaskService(db)
     my_tasks = await service.get_my_assigned_tasks_for_driver(driver.id)
     for t in my_tasks:

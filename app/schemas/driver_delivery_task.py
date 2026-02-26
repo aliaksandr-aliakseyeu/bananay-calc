@@ -60,6 +60,14 @@ class DriverDeliveryTaskResponse(BaseModel):
         None,
         description="Media ID of optional loading photo (use /driver/media/{id} to view)",
     )
+    loading_expected_count: int | None = Field(
+        None,
+        description="Total item points to scan at loading (for assigned/loading tasks)",
+    )
+    loading_scanned_count: int | None = Field(
+        None,
+        description="Item points already scanned at loading (enables Finish loading when >= expected)",
+    )
 
 
 class CompletedTaskResponse(BaseModel):
@@ -69,3 +77,29 @@ class CompletedTaskResponse(BaseModel):
     order_id: int = Field(..., description="Order ID")
     order_number: str = Field(..., description="Order number")
     delivered_at: datetime = Field(..., description="When the task was completed")
+
+
+class ScanQrRequest(BaseModel):
+    """Body for POST /delivery-tasks/{task_id}/scan (loading phase)."""
+
+    qr_token: UUID = Field(..., description="QR token from the scanned label (UUID)")
+
+
+class ScanQrResponse(BaseModel):
+    """Response after successful QR scan (audit recorded)."""
+
+    delivery_order_item_point_id: int = Field(
+        ..., description="ID of the scanned item point"
+    )
+    order_id: int = Field(..., description="Order ID")
+    quantity: int = Field(..., description="Quantity for this batch")
+    delivery_point_name: str | None = Field(
+        None, description="Delivery point name (for display)"
+    )
+    sku_name: str | None = Field(None, description="SKU name (for display)")
+    loading_expected_count: int = Field(
+        ..., description="Total item points to scan for this task"
+    )
+    loading_scanned_count: int = Field(
+        ..., description="Distinct item points already scanned at loading"
+    )

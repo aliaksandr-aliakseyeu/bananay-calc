@@ -8,7 +8,6 @@ class DriverSSEManager:
     """Holds one asyncio.Queue per driver SSE connection. Push events to a driver by id."""
 
     def __init__(self) -> None:
-        # driver_id (str) -> list of asyncio.Queue
         self._queues: dict[str, list[asyncio.Queue[dict[str, Any]]]] = {}
 
     def subscribe(self, driver_id: str) -> asyncio.Queue[dict[str, Any]]:
@@ -43,5 +42,4 @@ class DriverSSEManager:
                 pass
 
 
-# Single global instance; inject or use get_sse_manager() if you add DI later.
 driver_sse_manager = DriverSSEManager()

@@ -169,7 +169,6 @@ class DeliveryTaskService:
 
     async def _get_dc_for_point(self, point: DeliveryPoint) -> DistributionCenter | None:
         """Get DC for delivery point: sector -> DC in sector, or nearest if not in sector."""
-        # Sector via subquery: point belongs to which sector?
         sector_result = await self.db.execute(
             select(Sector)
             .select_from(DeliveryPoint)
@@ -195,7 +194,6 @@ class DeliveryTaskService:
         for order. For each point: sector -> first DC, or nearest DC if not in sector.
         Aggregates by (order_item_id, dc_id).
         """
-        # (order_item_id, dc_id) -> quantity
         allocation_map: dict[tuple[int, int], int] = defaultdict(int)
 
         for item in order.items:
@@ -234,9 +232,8 @@ class DeliveryTaskService:
         Create DriverDeliveryTask and DriverTaskDCDelivery when order goes PENDING.
 
         Same logic as build_driver_tasks: groups by warehouse, for each warehouse
-        creates one task with DC deliveries. Uses point -> sector -> DC.
+        creates one task with DC deliveries.         Uses point -> sector -> DC.
         """
-        # (order_id, wh_key) -> set of dc_ids
         tasks_data: dict[tuple[int, WarehouseKey], set[int]] = defaultdict(set)
 
         for item in order.items:
@@ -439,7 +436,6 @@ class DeliveryTaskService:
         task.taken_at = datetime.now(timezone.utc)
         await self.db.flush()
 
-        # Update producer view: points in this task -> IN_TRANSIT, order -> DRIVER_ASSIGNED
         task_dc_ids = {d.dc_id for d in task.dc_deliveries}
         wh_key = WarehouseKey(lat=task.warehouse_lat, lon=task.warehouse_lon)
 
@@ -586,7 +582,6 @@ class DeliveryTaskService:
         task.loading_started_at = now
         await self.db.flush()
 
-        # Producer view: order status → LOADING_AT_WAREHOUSE (приехала машина, идёт погрузка)
         order_result = await self.db.execute(
             select(DeliveryOrder)
             .where(DeliveryOrder.id == task.order_id)
@@ -629,7 +624,6 @@ class DeliveryTaskService:
         task.in_transit_at = now
         await self.db.flush()
 
-        # Producer view: order status → IN_TRANSIT_TO_DC (погрузка завершена, в пути к РЦ)
         order_result = await self.db.execute(
             select(DeliveryOrder)
             .where(DeliveryOrder.id == task.order_id)
@@ -685,7 +679,6 @@ class DeliveryTaskService:
         dc_del.delivered_at = now
         await self.db.flush()
 
-        # Producer view: mark (order_item, dc_id) as delivered; mark points at this DC as "at_dc"
         order_item_ids_result = await self.db.execute(
             select(DeliveryOrderItem.id).where(
                 DeliveryOrderItem.order_id == task.order_id
@@ -706,7 +699,6 @@ class DeliveryTaskService:
             )
             await self.db.flush()
 
-            # Mark each delivery point that belongs to this DC as "at_dc" (на РЦ)
             points_result = await self.db.execute(
                 select(DeliveryOrderItemPoint)
                 .where(DeliveryOrderItemPoint.order_item_id.in_(order_item_ids))
@@ -721,7 +713,6 @@ class DeliveryTaskService:
                     pt.status = DeliveryPointStatus.AT_DC.value
             await self.db.flush()
 
-        # When all DCs delivered we do NOT auto-complete task/order — driver must press "Завершить заказ"
         all_dc_delivered = all(
             d.status == DriverTaskDCStatus.DELIVERED.value
             for d in task.dc_deliveries
@@ -831,7 +822,6 @@ class DeliveryTaskService:
         loading_photo_media_id_map: dict[int, uuid.UUID] | None = None,
     ) -> list[DriverTask]:
         """Internal: build DriverTask list, optionally with task_id and per-DC status from map."""
-        # (order_id, order_number, wh_key) -> { dc_id: { (sku_name, sku_code): qty } }
         tasks_data: dict[
             tuple[int, str, WarehouseKey],
             dict[int, dict[tuple[str, str], int]],

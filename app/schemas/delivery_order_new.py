@@ -53,7 +53,6 @@ class DeliveryOrderItemPointResponse(DeliveryOrderItemPointBase):
     delivered_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-    # When status is at_dc: media ID of driver's unload photo at the DC (producer can view via GET .../dc-unload-photo/{id})
     dc_unload_photo_media_id: UUID | None = None
     lat: float | None = Field(None, description="Point latitude (from delivery_point)")
     lon: float | None = Field(None, description="Point longitude (from delivery_point)")
@@ -184,3 +183,30 @@ class DeliveryOrderListResponse(BaseModel):
     page: int
     page_size: int
     pages: int
+
+
+class OrderQrPayloadItem(BaseModel):
+    """One QR payload for printing (one per delivery_order_item_point)."""
+
+    qr_token: UUID = Field(..., description="UUID to encode in QR (for scan API)")
+    order_item_id: int = Field(..., description="Order item ID")
+    delivery_point_id: int = Field(..., description="Delivery point ID")
+    quantity: int = Field(..., description="Quantity for this batch")
+    delivery_point_name: str | None = Field(
+        None, description="Delivery point name (for label)",
+    )
+    delivery_point_address: str | None = Field(
+        None, description="Delivery point address (for label)",
+    )
+    sku_name: str | None = Field(None, description="SKU/template name (for label)")
+
+
+class OrderQrPayloadsResponse(BaseModel):
+    """List of QR payloads for an order (for producer print page)."""
+
+    order_id: int = Field(..., description="Order ID")
+    order_number: str = Field(..., description="Order number")
+    items: list[OrderQrPayloadItem] = Field(
+        default_factory=list,
+        description="One entry per delivery_order_item_point",
+    )

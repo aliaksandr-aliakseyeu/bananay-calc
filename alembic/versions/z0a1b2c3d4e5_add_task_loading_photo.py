@@ -71,5 +71,4 @@ def downgrade() -> None:
     )
     op.drop_column("driver_delivery_tasks", "loading_photo_media_id")
     op.drop_column("driver_delivery_tasks", "media_owner_uuid")
-    # PostgreSQL does not support removing enum values
     pass

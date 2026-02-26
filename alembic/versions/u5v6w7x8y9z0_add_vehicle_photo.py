@@ -48,4 +48,3 @@ def downgrade() -> None:
         type_="foreignkey",
     )
     op.drop_column("driver_vehicles", "photo_media_id")
-    # Note: PostgreSQL does not support removing enum values easily; leave 'vehicle' in type

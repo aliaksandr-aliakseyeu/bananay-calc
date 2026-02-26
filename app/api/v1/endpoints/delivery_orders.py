@@ -16,19 +16,19 @@ from app.db.models.delivery_task import DriverDeliveryTask
 from app.db.models.enums import MediaFileOwnerType
 from app.db.models.media_file import MediaFile
 from app.db.models.user import User
-from app.services.azure_blob_service import download_blob
 from app.dependencies import get_current_user, get_current_user_from_query
-from app.schemas.delivery_order_new import (
-    AssignedDriverInfo,
-    DeliveryCenterInfo,
-    DeliveryOrderCreateFromTemplates,
-    DeliveryOrderDetailResponse,
-    DeliveryOrderListResponse,
-    DeliveryOrderResponse,
-    DeliveryOrderStatusHistoryResponse,
-    DeliveryOrderStatusUpdate,
-)
+from app.schemas.delivery_order_new import (AssignedDriverInfo,
+                                            DeliveryCenterInfo,
+                                            DeliveryOrderCreateFromTemplates,
+                                            DeliveryOrderDetailResponse,
+                                            DeliveryOrderListResponse,
+                                            DeliveryOrderResponse,
+                                            DeliveryOrderStatusHistoryResponse,
+                                            DeliveryOrderStatusUpdate,
+                                            OrderQrPayloadItem,
+                                            OrderQrPayloadsResponse)
 from app.schemas.driver_location import DriverLocationResponse
+from app.services.azure_blob_service import download_blob
 from app.services.delivery_order_service import DeliveryOrderService
 from app.services.distance_service import DistanceService
 from app.services.driver_location_service import get_location_for_order
@@ -206,13 +206,72 @@ async def get_order(
             response = response.model_copy(
                 update={"assigned_driver": AssignedDriverInfo(**driver_info)}
             )
-    if order.status == OrderStatus.AT_DC:
+    if order.status in (
+        OrderStatus.DRIVER_ASSIGNED,
+        OrderStatus.LOADING_AT_WAREHOUSE,
+        OrderStatus.IN_TRANSIT_TO_DC,
+        OrderStatus.AT_DC,
+    ):
         dc_list = await DeliveryOrderService.get_order_delivery_centers(db, order_id)
         if dc_list:
             response = response.model_copy(
                 update={"delivery_centers": [DeliveryCenterInfo(**dc) for dc in dc_list]}
             )
     return response
+
+
+@router.get(
+    "/{order_id}/qr-payloads",
+    response_model=OrderQrPayloadsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get QR payloads for order (print labels)",
+)
+async def get_order_qr_payloads(
+    order_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> OrderQrPayloadsResponse:
+    """
+    Get list of QR payloads for this order (one per delivery_order_item_point).
+
+    For producer: print QR codes and stick on boxes. Each payload includes
+    qr_token (encode in QR), quantity, delivery point and SKU name for labels.
+    Only the order owner (producer) can access.
+    """
+    order = await DeliveryOrderService.get_order_by_id(
+        db, order_id, current_user.id, with_items=True
+    )
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Delivery order not found",
+        )
+    items: list[OrderQrPayloadItem] = []
+    for item in order.items:
+        sku_name = getattr(item, "template_name", None)
+        for pt in item.points:
+            delivery_point_name = None
+            delivery_point_address = None
+            if getattr(pt, "delivery_point", None):
+                dp = pt.delivery_point
+                delivery_point_name = getattr(dp, "name", None) or getattr(dp, "title", None)
+                delivery_point_address = getattr(dp, "address", None)
+            items.append(
+                OrderQrPayloadItem(
+                    qr_token=pt.qr_token,
+                    order_item_id=pt.order_item_id,
+                    delivery_point_id=pt.delivery_point_id,
+                    quantity=pt.quantity,
+                    delivery_point_name=delivery_point_name,
+                    delivery_point_address=delivery_point_address,
+                    sku_name=sku_name,
+                )
+            )
+    return OrderQrPayloadsResponse(
+        order_id=order.id,
+        order_number=order.order_number,
+        items=items,
+    )
 
 
 @router.get(

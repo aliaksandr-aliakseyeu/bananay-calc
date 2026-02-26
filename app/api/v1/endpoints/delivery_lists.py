@@ -55,9 +55,8 @@ async def get_user_delivery_lists(
     - **limit**: Number of items per page (1-100)
     - **offset**: Number of items to skip
     """
-    # Get total count
     total = await DeliveryListService.count_user_lists(db, current_user.id, search=search)
-    
+
     if include_items:
         lists = await DeliveryListService.get_user_lists(
             db, current_user.id, with_items=True, search=search, limit=limit, offset=offset

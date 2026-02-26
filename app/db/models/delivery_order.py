@@ -7,32 +7,25 @@ It contains snapshots of templates at the time of order creation.
 from __future__ import annotations
 
 import enum
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import (
-    JSON,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    Numeric,
-    String,
-    Text,
-    func,
-)
+from sqlalchemy import JSON, DateTime
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import (Float, ForeignKey, Integer, Numeric, String, Text,
+                        func, text)
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.db.models.delivery_point import DeliveryPoint
-    from app.db.models.delivery_task import (
-        DeliveryOrderItemDCAllocation,
-        DeliveryOrderItemDCStatus,
-    )
+    from app.db.models.delivery_task import (DeliveryOrderItemDCAllocation,
+                                             DeliveryOrderItemDCStatus)
     from app.db.models.delivery_template import DeliveryTemplate
+    from app.db.models.driver_account import DriverAccount
     from app.db.models.producer_sku import ProducerSKU
     from app.db.models.region import Region
     from app.db.models.user import User
@@ -66,6 +59,11 @@ class DeliveryPointStatus(str, enum.Enum):
     AT_DC = "at_dc"  # At distribution center (driver unloaded; courier will deliver to point)
     DELIVERED = "delivered"  # Successfully delivered to point
     FAILED = "failed"  # Delivery failed
+
+
+class ItemPointScanPhase(str, enum.Enum):
+    """Phase when a QR was scanned (audit trail). Extensible for at_dc, handover, delivered."""
+    LOADING = "loading"  # Driver scanned at producer warehouse during loading
 
 
 class DeliveryOrder(Base):
@@ -198,6 +196,7 @@ class DeliveryOrderItemPoint(Base):
     Individual delivery point within an order item.
 
     Tracks delivery status, quantity, and proof of delivery for each point.
+    qr_token: unique UUID for QR codes (one per batch); generated on create.
     """
     __tablename__ = "delivery_order_item_points"
 
@@ -207,6 +206,14 @@ class DeliveryOrderItemPoint(Base):
     )
     delivery_point_id: Mapped[int] = mapped_column(
         ForeignKey("geo_delivery_points.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+
+    qr_token: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        unique=True,
+        nullable=False,
+        index=True,
+        server_default=text("gen_random_uuid()"),
     )
 
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -230,6 +237,47 @@ class DeliveryOrderItemPoint(Base):
 
     order_item: Mapped["DeliveryOrderItem"] = relationship("DeliveryOrderItem", back_populates="points")
     delivery_point: Mapped["DeliveryPoint"] = relationship("DeliveryPoint")
+    scan_events: Mapped[list["DeliveryOrderItemPointScanEvent"]] = relationship(
+        "DeliveryOrderItemPointScanEvent",
+        back_populates="item_point",
+        cascade="all, delete-orphan",
+    )
+
+
+class DeliveryOrderItemPointScanEvent(Base):
+    """
+    Audit log for QR scans on delivery_order_item_points.
+
+    Records who scanned which item point at which phase (e.g. loading at warehouse).
+    Does not change order/point status; status transitions stay as today.
+    """
+    __tablename__ = "delivery_order_item_point_scan_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    delivery_order_item_point_id: Mapped[int] = mapped_column(
+        ForeignKey("delivery_order_item_points.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    phase: Mapped[ItemPointScanPhase] = mapped_column(
+        SQLEnum(ItemPointScanPhase, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        index=True,
+    )
+    scanned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), index=True
+    )
+    scanned_by_driver_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("driver_accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    item_point: Mapped["DeliveryOrderItemPoint"] = relationship(
+        "DeliveryOrderItemPoint", back_populates="scan_events"
+    )
+    scanned_by_driver: Mapped["DriverAccount | None"] = relationship("DriverAccount")
 
 
 class DeliveryOrderStatusHistory(Base):
