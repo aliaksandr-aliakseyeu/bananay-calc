@@ -1,11 +1,12 @@
 """Admin API for daily check-in moderation."""
+import json
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -21,6 +22,7 @@ from app.schemas.admin_daily_checkin import (
     VehicleShortInfo,
 )
 from app.services.azure_blob_service import download_blob
+from app.services.sse_manager import driver_sse_manager
 
 router = APIRouter(prefix="/admin/daily-checkins", tags=["Admin - Daily Check-ins"])
 
@@ -206,6 +208,22 @@ async def approve_checkin(
 
     await db.commit()
 
+    sse_payload = {
+        "checkin_id": str(checkin_id),
+        "status": "approved",
+        "reject_reason": None,
+    }
+    driver_sse_manager.send_to_driver(str(checkin.driver_id), "daily_checkin_status", sse_payload)
+
+    notify_payload = json.dumps({
+        "driver_id": str(checkin.driver_id),
+        "event": "daily_checkin_status",
+        **sse_payload,
+    })
+    safe_payload = notify_payload.replace("'", "''")
+    await db.execute(text(f"NOTIFY daily_checkin_events, '{safe_payload}'"))
+    await db.commit()
+
     return {"status": "approved", "checkin_id": str(checkin_id)}
 
 
@@ -239,6 +257,22 @@ async def reject_checkin(
     checkin.reviewed_at = datetime.now(timezone.utc)
     checkin.reject_reason = body.reason
 
+    await db.commit()
+
+    sse_payload = {
+        "checkin_id": str(checkin_id),
+        "status": "rejected",
+        "reject_reason": body.reason,
+    }
+    driver_sse_manager.send_to_driver(str(checkin.driver_id), "daily_checkin_status", sse_payload)
+
+    notify_payload = json.dumps({
+        "driver_id": str(checkin.driver_id),
+        "event": "daily_checkin_status",
+        **sse_payload,
+    })
+    safe_payload = notify_payload.replace("'", "''")
+    await db.execute(text(f"NOTIFY daily_checkin_events, '{safe_payload}'"))
     await db.commit()
 
     return {"status": "rejected", "checkin_id": str(checkin_id)}

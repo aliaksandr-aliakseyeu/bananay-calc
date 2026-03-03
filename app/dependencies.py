@@ -2,15 +2,15 @@
 import uuid
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_driver_id_from_token, get_user_id_from_token
+from app.core.security import get_dc_id_from_token, get_driver_id_from_token, get_user_id_from_token
 from app.db.base import get_db
-from app.db.models import DriverAccount, User
-from app.db.models.enums import DriverAccountStatus, OnboardingStatus, UserRole
+from app.db.models import DcAccount, DriverAccount, User
+from app.db.models.enums import DcAccountStatus, DriverAccountStatus, OnboardingStatus, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -171,3 +171,106 @@ async def get_current_driver(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return driver
+
+
+async def get_current_dc(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DcAccount:
+    """Dependency for DC endpoints. Validates JWT with subject_type=dc and returns DcAccount."""
+    dc_id_str = get_dc_id_from_token(token)
+    try:
+        dc_uuid = uuid.UUID(dc_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    result = await db.execute(select(DcAccount).where(DcAccount.id == dc_uuid))
+    dc = result.scalar_one_or_none()
+    if dc is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="DC account not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if dc.status == DcAccountStatus.BLOCKED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is blocked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return dc
+
+
+async def get_current_driver_from_query(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    token: Annotated[str | None, Query(alias="token", description="Bearer token for SSE (EventSource)")] = None,
+) -> DriverAccount:
+    """
+    Same as get_current_driver but reads token from query string.
+    Use for SSE endpoint where EventSource cannot send Authorization header.
+    """
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token required (query param: token)",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    driver_id_str = get_driver_id_from_token(token)
+    try:
+        driver_uuid = uuid.UUID(driver_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    result = await db.execute(select(DriverAccount).where(DriverAccount.id == driver_uuid))
+    driver = result.scalar_one_or_none()
+    if driver is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Driver not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if driver.status == DriverAccountStatus.BLOCKED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is blocked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return driver
+
+
+async def get_current_user_from_query(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    token: Annotated[str | None, Query(alias="token", description="Bearer token for SSE (EventSource)")] = None,
+) -> User:
+    """
+    Same as get_current_user but reads token from query string.
+    Use for SSE endpoint where EventSource cannot send Authorization header.
+    """
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token required (query param: token)",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user_id = get_user_id_from_token(token)
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is disabled",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user

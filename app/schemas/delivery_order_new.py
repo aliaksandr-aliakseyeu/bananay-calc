@@ -1,11 +1,32 @@
 """Pydantic schemas for Delivery Orders (new structure with templates)."""
 from datetime import datetime
 from decimal import Decimal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.db.models.delivery_order import (DeliveryPointStatus, OrderPriority,
                                           OrderStatus)
+
+
+class DeliveryCenterInfo(BaseModel):
+    """Distribution center where goods were delivered (for producer when status is at_dc)."""
+
+    id: int = Field(..., description="DC id")
+    name: str = Field(..., description="DC name")
+    address: str | None = Field(None, description="DC address")
+    lat: float = Field(..., description="Latitude")
+    lon: float = Field(..., description="Longitude")
+
+
+class AssignedDriverInfo(BaseModel):
+    """Driver assigned to the delivery order (for producer view)."""
+
+    id: str = Field(..., description="Driver UUID")
+    full_name: str | None = Field(None, description="Driver full name")
+    phone: str | None = Field(None, description="Full phone number for order owner")
+    phone_masked: str = Field(..., description="Masked phone, e.g. +7 *** *** 12 34")
+    city: str | None = Field(None, description="Driver city")
 
 
 class DeliveryOrderItemPointBase(BaseModel):
@@ -32,6 +53,11 @@ class DeliveryOrderItemPointResponse(DeliveryOrderItemPointBase):
     delivered_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+    dc_unload_photo_media_id: UUID | None = None
+    lat: float | None = Field(None, description="Point latitude (from delivery_point)")
+    lon: float | None = Field(None, description="Point longitude (from delivery_point)")
+    delivery_point_name: str | None = Field(None, description="Name of the delivery point (from delivery_point)")
+    delivery_point_address: str | None = Field(None, description="Address of the delivery point (from delivery_point)")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -125,6 +151,14 @@ class DeliveryOrderResponse(BaseModel):
 class DeliveryOrderDetailResponse(DeliveryOrderResponse):
     """Detailed schema for delivery order with items."""
     items: list[DeliveryOrderItemResponse] = Field(default_factory=list)
+    assigned_driver: AssignedDriverInfo | None = Field(
+        None,
+        description="Driver assigned to this order (when status is driver_assigned or later)",
+    )
+    delivery_centers: list[DeliveryCenterInfo] | None = Field(
+        None,
+        description="DCs where goods were delivered (when status is at_dc, for map and modal)",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -149,3 +183,30 @@ class DeliveryOrderListResponse(BaseModel):
     page: int
     page_size: int
     pages: int
+
+
+class OrderQrPayloadItem(BaseModel):
+    """One QR payload for printing (one per delivery_order_item_point)."""
+
+    qr_token: UUID = Field(..., description="UUID to encode in QR (for scan API)")
+    order_item_id: int = Field(..., description="Order item ID")
+    delivery_point_id: int = Field(..., description="Delivery point ID")
+    quantity: int = Field(..., description="Quantity for this batch")
+    delivery_point_name: str | None = Field(
+        None, description="Delivery point name (for label)",
+    )
+    delivery_point_address: str | None = Field(
+        None, description="Delivery point address (for label)",
+    )
+    sku_name: str | None = Field(None, description="SKU/template name (for label)")
+
+
+class OrderQrPayloadsResponse(BaseModel):
+    """List of QR payloads for an order (for producer print page)."""
+
+    order_id: int = Field(..., description="Order ID")
+    order_number: str = Field(..., description="Order number")
+    items: list[OrderQrPayloadItem] = Field(
+        default_factory=list,
+        description="One entry per delivery_order_item_point",
+    )

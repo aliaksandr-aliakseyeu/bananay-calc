@@ -51,9 +51,8 @@ class Settings(BaseSettings):
     USE_REAL_EMAIL: bool = False
 
     TELEGRAM_BOT_TOKEN: str | None = None
-    DRIVER_OTP_UNIVERSAL_CODE: str = "0320"  # dev bypass code
+    DRIVER_OTP_UNIVERSAL_CODE: str = "0320"
 
-    # Azure Blob Storage (driver documents)
     AZURE_STORAGE_CONNECTION_STRING: str | None = None
     AZURE_STORAGE_CONTAINER_DRIVERS: str = "bananay-media"
 
@@ -62,9 +61,20 @@ class Settings(BaseSettings):
     DEFAULT_SEARCH_RADIUS_METERS: int = 300
     MAX_SEARCH_RADIUS_METERS: int = 5000
 
+    SSE_HEARTBEAT_INTERVAL: int = 30
+
+    # Driver location tracking
+    DRIVER_LOCATION_SEND_INTERVAL_SEC: int = 15
+    """How often driver should POST location updates (client uses this as hint)."""
+    DRIVER_LOCATION_POLL_INTERVAL_SEC: int = 10
+    """How often to poll location when using polling (client hint)."""
+    DRIVER_LOCATION_STALE_AFTER_SEC: int = 120
+    """Consider location stale after this many seconds (for is_stale flag)."""
+
     model_config = SettingsConfigDict(
         env_file=".env",
-        case_sensitive=True
+        case_sensitive=True,
+        extra="ignore",  # allow .env vars not in Settings (e.g. DRIVER_TOKEN for scripts)
     )
 
     @property

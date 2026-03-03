@@ -11,4 +11,3 @@ class PaginatedResponse(BaseModel, Generic[T]):
 
     items: list[T]
     total: int
-    total: int

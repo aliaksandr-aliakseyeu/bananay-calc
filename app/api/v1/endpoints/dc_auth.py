@@ -1,4 +1,4 @@
-"""Driver auth: request OTP, verify OTP (Telegram as SMS simulation)."""
+"""DC auth: request OTP, verify OTP."""
 import random
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -9,17 +9,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.security import (create_driver_access_token,
-                               create_driver_refresh_token, decode_token)
+from app.core.security import create_dc_access_token, create_dc_refresh_token, decode_token
 from app.db.base import get_db
-from app.db.models import (DriverAccount, DriverAccountStatus, DriverOtpCode,
-                           DriverOtpStatus)
-from app.schemas.auth import (DriverRequestOtp, DriverVerifyOtp,
-                              DriverVerifyOtpResponse, RefreshTokenRequest)
+from app.db.models import DcAccount, DcAccountStatus, DcOtpCode, DcOtpStatus
+from app.schemas.auth import DcRequestOtp, DcVerifyOtp, DcVerifyOtpResponse, RefreshTokenRequest
 from app.services.phone_service import validate_phone_e164
 from app.services.telegram_otp_service import send_otp_to_telegram
 
-router = APIRouter(prefix="/auth/driver", tags=["Driver Auth"])
+router = APIRouter(prefix="/auth/dc", tags=["DC Auth"])
 
 OTP_EXPIRE_MINUTES = 5
 OTP_LENGTH = 4
@@ -29,54 +26,44 @@ def _generate_otp() -> str:
     return "".join(str(random.randint(0, 9)) for _ in range(OTP_LENGTH))
 
 
-async def _get_or_create_driver(
-    db: AsyncSession, phone_e164: str
-) -> tuple[DriverAccount, bool]:
-    """Return (driver, is_new_user)."""
-    result = await db.execute(
-        select(DriverAccount).where(DriverAccount.phone_e164 == phone_e164)
-    )
-    driver = result.scalar_one_or_none()
-    if driver:
-        driver.last_login_at = datetime.now(timezone.utc)
-        return driver, False
-    driver = DriverAccount(
+async def _get_or_create_dc(db: AsyncSession, phone_e164: str) -> tuple[DcAccount, bool]:
+    """Return (dc_account, is_new_user)."""
+    result = await db.execute(select(DcAccount).where(DcAccount.phone_e164 == phone_e164))
+    dc_account = result.scalar_one_or_none()
+    if dc_account:
+        dc_account.last_login_at = datetime.now(timezone.utc)
+        return dc_account, False
+    dc_account = DcAccount(
         phone_e164=phone_e164,
-        status=DriverAccountStatus.DRAFT,
+        status=DcAccountStatus.DRAFT,
     )
-    db.add(driver)
+    db.add(dc_account)
     await db.flush()
-    return driver, True
+    return dc_account, True
 
 
 @router.post("/request-otp")
 async def request_otp(
-    body: DriverRequestOtp,
+    body: DcRequestOtp,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
-    """
-    Request OTP for driver login.
-    Generates 4-digit code, saves to DB, sends via Telegram if user subscribed to the bot.
-    Accepts any country number (E.164 or local format).
-    """
+    """Request OTP for DC employee login."""
     phone_e164 = validate_phone_e164(body.phone_e164)
     code = _generate_otp()
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRE_MINUTES)
 
-    result = await db.execute(
-        select(DriverOtpCode).where(DriverOtpCode.phone_e164 == phone_e164)
-    )
+    result = await db.execute(select(DcOtpCode).where(DcOtpCode.phone_e164 == phone_e164))
     row = result.scalar_one_or_none()
     if row:
         row.code = code
-        row.status = DriverOtpStatus.PENDING
+        row.status = DcOtpStatus.PENDING
         row.expires_at = expires_at
         row.used_at = None
     else:
-        row = DriverOtpCode(
+        row = DcOtpCode(
             phone_e164=phone_e164,
             code=code,
-            status=DriverOtpStatus.PENDING,
+            status=DcOtpStatus.PENDING,
             expires_at=expires_at,
         )
         db.add(row)
@@ -96,34 +83,31 @@ async def request_otp(
     }
 
 
-@router.post("/verify-otp", response_model=DriverVerifyOtpResponse)
+@router.post("/verify-otp", response_model=DcVerifyOtpResponse)
 async def verify_otp(
-    body: DriverVerifyOtp,
+    body: DcVerifyOtp,
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> DriverVerifyOtpResponse:
-    """
-    Verify OTP and return driver JWT (or use universal code 0320).
-    Creates DriverAccount if first login. is_new_user=True for first-time drivers.
-    Accepts any country number (E.164 or local format).
-    """
+) -> DcVerifyOtpResponse:
+    """Verify OTP and return DC JWT tokens."""
     phone_e164 = validate_phone_e164(body.phone_e164)
     code = body.code.strip()
 
     universal = settings.DRIVER_OTP_UNIVERSAL_CODE
     if code == universal:
-        driver, is_new_user = await _get_or_create_driver(db, phone_e164)
+        dc_account, is_new_user = await _get_or_create_dc(db, phone_e164)
         await db.commit()
-        driver_id_str = str(driver.id)
-        return DriverVerifyOtpResponse(
-            access_token=create_driver_access_token(driver_id_str),
-            refresh_token=create_driver_refresh_token(driver_id_str),
+        dc_id_str = str(dc_account.id)
+        return DcVerifyOtpResponse(
+            access_token=create_dc_access_token(dc_id_str),
+            refresh_token=create_dc_refresh_token(dc_id_str),
             token_type="bearer",
             is_new_user=is_new_user,
         )
+
     result = await db.execute(
-        select(DriverOtpCode).where(
-            DriverOtpCode.phone_e164 == phone_e164,
-            DriverOtpCode.status == DriverOtpStatus.PENDING,
+        select(DcOtpCode).where(
+            DcOtpCode.phone_e164 == phone_e164,
+            DcOtpCode.status == DcOtpStatus.PENDING,
         )
     )
     row = result.scalar_one_or_none()
@@ -143,69 +127,68 @@ async def verify_otp(
             detail="Неверный код.",
         )
 
-    row.status = DriverOtpStatus.USED
+    row.status = DcOtpStatus.USED
     row.used_at = datetime.now(timezone.utc)
 
-    driver, is_new_user = await _get_or_create_driver(db, phone_e164)
+    dc_account, is_new_user = await _get_or_create_dc(db, phone_e164)
     await db.commit()
-
-    driver_id_str = str(driver.id)
-    return DriverVerifyOtpResponse(
-        access_token=create_driver_access_token(driver_id_str),
-        refresh_token=create_driver_refresh_token(driver_id_str),
+    dc_id_str = str(dc_account.id)
+    return DcVerifyOtpResponse(
+        access_token=create_dc_access_token(dc_id_str),
+        refresh_token=create_dc_refresh_token(dc_id_str),
         token_type="bearer",
         is_new_user=is_new_user,
     )
 
 
-@router.post("/refresh", response_model=DriverVerifyOtpResponse)
-async def refresh_driver_token(
+@router.post("/refresh", response_model=DcVerifyOtpResponse)
+async def refresh_dc_token(
     refresh_request: RefreshTokenRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> DriverVerifyOtpResponse:
-    """Refresh driver access token pair using a valid driver refresh token."""
+) -> DcVerifyOtpResponse:
+    """Refresh DC access token pair using a valid DC refresh token."""
     payload = decode_token(refresh_request.refresh_token)
-    if payload.get("type") != "refresh" or payload.get("subject_type") != "driver":
+    if payload.get("type") != "refresh" or payload.get("subject_type") != "dc":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid driver refresh token",
+            detail="Invalid DC refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    driver_id_raw = payload.get("sub")
-    if not driver_id_raw:
+    dc_id_raw = payload.get("sub")
+    if not dc_id_raw:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid driver refresh token",
+            detail="Invalid DC refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
     try:
-        driver_id = UUID(str(driver_id_raw))
+        dc_id = UUID(str(dc_id_raw))
     except (TypeError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid driver refresh token",
+            detail="Invalid DC refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    result = await db.execute(select(DriverAccount).where(DriverAccount.id == driver_id))
-    driver = result.scalar_one_or_none()
-    if not driver:
+    result = await db.execute(select(DcAccount).where(DcAccount.id == dc_id))
+    dc_account = result.scalar_one_or_none()
+    if not dc_account:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Driver not found",
+            detail="DC account not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if driver.status == DriverAccountStatus.BLOCKED:
+    if dc_account.status == DcAccountStatus.BLOCKED:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Driver account is blocked",
+            detail="DC account is blocked",
         )
 
-    driver_id_str = str(driver.id)
-    return DriverVerifyOtpResponse(
-        access_token=create_driver_access_token(driver_id_str),
-        refresh_token=create_driver_refresh_token(driver_id_str),
+    dc_id_str = str(dc_account.id)
+    return DcVerifyOtpResponse(
+        access_token=create_dc_access_token(dc_id_str),
+        refresh_token=create_dc_refresh_token(dc_id_str),
         token_type="bearer",
         is_new_user=False,
     )

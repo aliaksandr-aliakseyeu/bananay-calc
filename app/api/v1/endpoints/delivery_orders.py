@@ -1,21 +1,38 @@
 """Delivery Order API endpoints (new structure with templates)."""
+import asyncio
+import json
 import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response, StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.base import get_db
 from app.db.models.delivery_order import OrderStatus
+from app.db.models.delivery_task import DriverDeliveryTask
+from app.db.models.enums import MediaFileOwnerType
+from app.db.models.media_file import MediaFile
 from app.db.models.user import User
-from app.dependencies import get_current_user
-from app.schemas.delivery_order_new import (DeliveryOrderCreateFromTemplates,
+from app.dependencies import get_current_user, get_current_user_from_query
+from app.schemas.delivery_order_new import (AssignedDriverInfo,
+                                            DeliveryCenterInfo,
+                                            DeliveryOrderCreateFromTemplates,
                                             DeliveryOrderDetailResponse,
                                             DeliveryOrderListResponse,
                                             DeliveryOrderResponse,
                                             DeliveryOrderStatusHistoryResponse,
-                                            DeliveryOrderStatusUpdate)
+                                            DeliveryOrderStatusUpdate,
+                                            OrderQrPayloadItem,
+                                            OrderQrPayloadsResponse)
+from app.schemas.driver_location import DriverLocationResponse
+from app.services.azure_blob_service import download_blob
 from app.services.delivery_order_service import DeliveryOrderService
+from app.services.distance_service import DistanceService
+from app.services.driver_location_service import get_location_for_order
+from app.services.driver_location_sse import driver_location_sse
 
 router = APIRouter(prefix="/delivery-orders", tags=["delivery-orders"])
 
@@ -132,7 +149,195 @@ async def get_order(
             detail="Delivery order not found",
         )
 
-    return DeliveryOrderDetailResponse.model_validate(order)
+    response = DeliveryOrderDetailResponse.model_validate(order)
+    photo_map = await DeliveryOrderService.get_order_dc_unload_photos(db, order)
+    if photo_map:
+        new_items = []
+        for item in response.items:
+            new_points = [
+                p.model_copy(update={"dc_unload_photo_media_id": photo_map[p.id]})
+                if p.id in photo_map
+                else p
+                for p in item.points
+            ]
+            new_items.append(item.model_copy(update={"points": new_points}))
+        response = response.model_copy(update={"items": new_items})
+
+    distance_service = DistanceService()
+    new_items = []
+    for idx_i, item in enumerate(response.items):
+        new_points = []
+        for idx_p, pt in enumerate(item.points):
+            lat, lon = None, None
+            delivery_point_name = None
+            delivery_point_address = None
+            orm_pt = order.items[idx_i].points[idx_p] if idx_i < len(order.items) else None
+            if orm_pt and getattr(orm_pt, "delivery_point", None):
+                dp = orm_pt.delivery_point
+                if getattr(dp, "location", None):
+                    try:
+                        lat, lon = distance_service.extract_coordinates(dp.location)
+                    except Exception:
+                        pass
+                if getattr(dp, "name", None):
+                    delivery_point_name = dp.name
+                if getattr(dp, "address", None):
+                    delivery_point_address = dp.address
+            new_points.append(pt.model_copy(update={
+                "lat": lat, "lon": lon,
+                "delivery_point_name": delivery_point_name,
+                "delivery_point_address": delivery_point_address,
+            }))
+        new_items.append(item.model_copy(update={"points": new_points}))
+    response = response.model_copy(update={"items": new_items})
+
+    if order.status in (
+        OrderStatus.DRIVER_ASSIGNED,
+        OrderStatus.LOADING_AT_WAREHOUSE,
+        OrderStatus.IN_DELIVERY,
+        OrderStatus.PARTIALLY_DELIVERED,
+        OrderStatus.IN_TRANSIT_TO_DC,
+        OrderStatus.AT_DC,
+    ):
+        driver_info = await DeliveryOrderService.get_assigned_driver_for_order(
+            db, order_id
+        )
+        if driver_info:
+            response = response.model_copy(
+                update={"assigned_driver": AssignedDriverInfo(**driver_info)}
+            )
+    if order.status in (
+        OrderStatus.DRIVER_ASSIGNED,
+        OrderStatus.LOADING_AT_WAREHOUSE,
+        OrderStatus.IN_TRANSIT_TO_DC,
+        OrderStatus.AT_DC,
+    ):
+        dc_list = await DeliveryOrderService.get_order_delivery_centers(db, order_id)
+        if dc_list:
+            response = response.model_copy(
+                update={"delivery_centers": [DeliveryCenterInfo(**dc) for dc in dc_list]}
+            )
+    return response
+
+
+@router.get(
+    "/{order_id}/qr-payloads",
+    response_model=OrderQrPayloadsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get QR payloads for order (print labels)",
+)
+async def get_order_qr_payloads(
+    order_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> OrderQrPayloadsResponse:
+    """
+    Get list of QR payloads for this order (one per delivery_order_item_point).
+
+    For producer: print QR codes and stick on boxes. Each payload includes
+    qr_token (encode in QR), quantity, delivery point and SKU name for labels.
+    Only the order owner (producer) can access.
+    """
+    order = await DeliveryOrderService.get_order_by_id(
+        db, order_id, current_user.id, with_items=True
+    )
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Delivery order not found",
+        )
+    items: list[OrderQrPayloadItem] = []
+    for item in order.items:
+        sku_name = getattr(item, "template_name", None)
+        for pt in item.points:
+            delivery_point_name = None
+            delivery_point_address = None
+            if getattr(pt, "delivery_point", None):
+                dp = pt.delivery_point
+                delivery_point_name = getattr(dp, "name", None) or getattr(dp, "title", None)
+                delivery_point_address = getattr(dp, "address", None)
+            items.append(
+                OrderQrPayloadItem(
+                    qr_token=pt.qr_token,
+                    order_item_id=pt.order_item_id,
+                    delivery_point_id=pt.delivery_point_id,
+                    quantity=pt.quantity,
+                    delivery_point_name=delivery_point_name,
+                    delivery_point_address=delivery_point_address,
+                    sku_name=sku_name,
+                )
+            )
+    return OrderQrPayloadsResponse(
+        order_id=order.id,
+        order_number=order.order_number,
+        items=items,
+    )
+
+
+@router.get(
+    "/{order_id}/dc-unload-photo/{media_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Get DC unload photo (producer view)",
+)
+async def get_dc_unload_photo(
+    order_id: int,
+    media_id: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """
+    Stream the driver's unload-at-DC photo for this order.
+    Only allowed if the media belongs to a driver task for this order and the current user is the order's producer.
+    """
+    from uuid import UUID
+
+    order = await DeliveryOrderService.get_order_by_id(db, order_id, current_user.id)
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Delivery order not found",
+        )
+    try:
+        uid = UUID(media_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid media ID",
+        )
+    result = await db.execute(select(MediaFile).where(MediaFile.id == uid))
+    media = result.scalar_one_or_none()
+    if not media:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Media not found",
+        )
+    if media.owner_type != MediaFileOwnerType.DRIVER_DELIVERY_TASK:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Media not found",
+        )
+    task_result = await db.execute(
+        select(DriverDeliveryTask).where(
+            DriverDeliveryTask.media_owner_uuid == media.owner_id,
+            DriverDeliveryTask.order_id == order_id,
+        )
+    )
+    if not task_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Media not found",
+        )
+    out = download_blob(media.blob_path)
+    if not out:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Storage unavailable",
+        )
+    content, _ = out
+    return Response(
+        content=content,
+        media_type=media.content_type or "application/octet-stream",
+    )
 
 
 @router.patch(
@@ -201,6 +406,80 @@ async def delete_order(
         await DeliveryOrderService.delete_order(db, order)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get(
+    "/{order_id}/driver-location",
+    response_model=DriverLocationResponse | None,
+    status_code=status.HTTP_200_OK,
+    summary="Get driver location for order",
+)
+async def get_driver_location(
+    order_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DriverLocationResponse | None:
+    """
+    Get last reported driver location for an order.
+    Returns null if no location yet. User must own the order.
+    """
+    order = await DeliveryOrderService.get_order_by_id(db, order_id, current_user.id)
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Delivery order not found",
+        )
+    loc = await get_location_for_order(db, order_id)
+    if not loc:
+        return None
+    return DriverLocationResponse(**loc)
+
+
+async def _sse_stream_for_order(order_id: int, queue: asyncio.Queue):
+    """Async generator: yield SSE-formatted location messages. Heartbeat if no event."""
+    try:
+        while True:
+            try:
+                payload = await asyncio.wait_for(queue.get(), timeout=settings.SSE_HEARTBEAT_INTERVAL)
+            except asyncio.TimeoutError:
+                yield ": heartbeat\n\n"
+                continue
+            event_name = payload.get("event", "location")
+            data_str = json.dumps(payload, ensure_ascii=False)
+            yield f"event: {event_name}\ndata: {data_str}\n\n"
+    finally:
+        driver_location_sse.unsubscribe(order_id, queue)
+
+
+@router.get(
+    "/{order_id}/driver-location/stream",
+    summary="SSE stream of driver location updates",
+)
+async def stream_driver_location(
+    order_id: int,
+    current_user: Annotated[User, Depends(get_current_user_from_query)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Server-Sent Events stream for driver location on this order.
+    Pass token in query: ?token=<access_token>
+    """
+    order = await DeliveryOrderService.get_order_by_id(db, order_id, current_user.id)
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Delivery order not found",
+        )
+    queue = driver_location_sse.subscribe(order_id)
+    return StreamingResponse(
+        _sse_stream_for_order(order_id, queue),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get(

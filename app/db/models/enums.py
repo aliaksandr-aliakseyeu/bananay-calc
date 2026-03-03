@@ -78,6 +78,7 @@ class MediaFileOwnerType(str, Enum):
     ROUTE_STEP = "route_step"
     VEHICLE = "vehicle"
     DAILY_CHECKIN = "daily_checkin"
+    DRIVER_DELIVERY_TASK = "driver_delivery_task"
 
 
 class DriverOtpStatus(str, Enum):
@@ -103,3 +104,16 @@ class DailyCheckInPhotoKind(str, Enum):
     VEHICLE_RIGHT = "vehicle_right"
     VEHICLE_REAR = "vehicle_rear"
     VEHICLE_CARGO = "vehicle_cargo"
+
+
+class DcAccountStatus(str, Enum):
+    """Distribution center account status."""
+    DRAFT = "draft"
+    ACTIVE = "active"
+    BLOCKED = "blocked"
+
+
+class DcOtpStatus(str, Enum):
+    """Distribution center OTP code status (one-time use)."""
+    PENDING = "pending"
+    USED = "used"

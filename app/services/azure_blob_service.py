@@ -101,6 +101,33 @@ def upload_vehicle_document(
     return blob_name, sha
 
 
+def upload_driver_task_photo(
+    driver_id: str,
+    task_id: int,
+    kind: str,
+    content: bytes,
+    content_type: str,
+) -> tuple[str, Optional[str]]:
+    """
+    Upload delivery task photo (e.g. loading) to Azure Blob.
+    Path: drivers/{driver_id}/tasks/{task_id}/{kind}/{uuid}.ext
+    Returns (blob_path, sha256_hex or None).
+    """
+    client = _get_blob_service_client()
+    if not client:
+        raise RuntimeError("Azure Blob Storage is not configured (AZURE_STORAGE_CONNECTION_STRING)")
+
+    container = settings.AZURE_STORAGE_CONTAINER_DRIVERS
+    ext = _content_type_to_ext(content_type)
+    blob_name = f"drivers/{driver_id}/tasks/{task_id}/{kind}/{uuid.uuid4().hex}{ext}"
+
+    blob_client = client.get_blob_client(container=container, blob=blob_name)
+    blob_client.upload_blob(content, overwrite=True)
+
+    sha = hashlib.sha256(content).hexdigest()
+    return blob_name, sha
+
+
 def _content_type_to_ext(content_type: str) -> str:
     m = {
         "image/jpeg": ".jpg",

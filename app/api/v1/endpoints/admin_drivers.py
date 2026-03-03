@@ -144,10 +144,8 @@ async def approve_driver(
             detail="Driver is not in pending review status",
         )
 
-    # Update driver status
     driver.status = DriverAccountStatus.ACTIVE
 
-    # Update application if exists
     if driver.application:
         driver.application.status = DriverApplicationStatus.APPROVED
         driver.application.reviewed_at = datetime.now(timezone.utc)
@@ -204,10 +202,8 @@ async def reject_driver(
             detail="Driver is not in reviewable status",
         )
 
-    # Update driver status back to draft so they can fix and resubmit
     driver.status = DriverAccountStatus.DRAFT
 
-    # Update application if exists
     if driver.application:
         driver.application.status = DriverApplicationStatus.REJECTED
         driver.application.reviewed_at = datetime.now(timezone.utc)
@@ -255,7 +251,6 @@ async def get_driver_detail(
             detail="Driver not found",
         )
 
-    # Get driver documents
     doc_result = await db.execute(
         select(MediaFile).where(
             MediaFile.owner_id == driver.id,
@@ -268,7 +263,6 @@ async def get_driver_detail(
     for doc in documents:
         doc_map[doc.kind] = str(doc.id)
 
-    # Get vehicle details with photos
     vehicles_data = []
     for vehicle in (driver.vehicles or []):
         vehicles_data.append({

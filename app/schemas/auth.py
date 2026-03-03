@@ -167,3 +167,25 @@ class DriverVerifyOtpResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     is_new_user: bool = False
+
+
+class DcRequestOtp(BaseModel):
+    """Request OTP for DC employee login."""
+
+    phone_e164: str = Field(..., min_length=10, max_length=20)
+
+
+class DcVerifyOtp(BaseModel):
+    """Verify OTP and get DC employee tokens."""
+
+    phone_e164: str = Field(..., min_length=10, max_length=20)
+    code: str = Field(..., min_length=4, max_length=10)
+
+
+class DcVerifyOtpResponse(BaseModel):
+    """Response after DC OTP verification."""
+
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    is_new_user: bool = False

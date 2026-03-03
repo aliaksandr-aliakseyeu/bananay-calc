@@ -18,9 +18,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Drop old index (it references city_id)
     op.drop_index("ix_driver_accounts_status_city_id", table_name="driver_accounts")
-    # Rename column
     op.alter_column(
         "driver_accounts",
         "city_id",
@@ -28,7 +26,6 @@ def upgrade() -> None:
         existing_type=sa.Integer(),
         existing_nullable=True,
     )
-    # Create new index
     op.create_index(
         "ix_driver_accounts_status_region_id",
         "driver_accounts",
