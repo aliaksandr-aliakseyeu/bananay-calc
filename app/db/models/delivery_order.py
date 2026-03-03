@@ -26,6 +26,7 @@ if TYPE_CHECKING:
                                              DeliveryOrderItemDCStatus)
     from app.db.models.delivery_template import DeliveryTemplate
     from app.db.models.driver_account import DriverAccount
+    from app.db.models.dc_account import DcAccount
     from app.db.models.producer_sku import ProducerSKU
     from app.db.models.region import Region
     from app.db.models.user import User
@@ -64,6 +65,10 @@ class DeliveryPointStatus(str, enum.Enum):
 class ItemPointScanPhase(str, enum.Enum):
     """Phase when a QR was scanned (audit trail). Extensible for at_dc, handover, delivered."""
     LOADING = "loading"  # Driver scanned at producer warehouse during loading
+    RECEIVED_AT_DC = "received_at_dc"  # RC employee accepted at distribution center
+    MOVED_TO_SORTING = "moved_to_sorting"  # RC employee moved box to sorting area
+    SORTED_TO_ZONE = "sorted_to_zone"  # RC employee sorted into delivery zone
+    HANDED_TO_COURIER2 = "handed_to_courier2"  # RC employee handed over to courier #2
 
 
 class DeliveryOrder(Base):
@@ -248,7 +253,7 @@ class DeliveryOrderItemPointScanEvent(Base):
     """
     Audit log for QR scans on delivery_order_item_points.
 
-    Records who scanned which item point at which phase (e.g. loading at warehouse).
+    Records who scanned which item point at which phase (loading / RC lifecycle).
     Does not change order/point status; status transitions stay as today.
     """
     __tablename__ = "delivery_order_item_point_scan_events"
@@ -273,11 +278,24 @@ class DeliveryOrderItemPointScanEvent(Base):
         nullable=True,
         index=True,
     )
+    scanned_by_dc_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("dc_accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    operation_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+    )
+    event_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     item_point: Mapped["DeliveryOrderItemPoint"] = relationship(
         "DeliveryOrderItemPoint", back_populates="scan_events"
     )
     scanned_by_driver: Mapped["DriverAccount | None"] = relationship("DriverAccount")
+    scanned_by_dc: Mapped["DcAccount | None"] = relationship("DcAccount")
 
 
 class DeliveryOrderStatusHistory(Base):

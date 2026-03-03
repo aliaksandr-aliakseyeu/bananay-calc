@@ -104,3 +104,16 @@ class DailyCheckInPhotoKind(str, Enum):
     VEHICLE_RIGHT = "vehicle_right"
     VEHICLE_REAR = "vehicle_rear"
     VEHICLE_CARGO = "vehicle_cargo"
+
+
+class DcAccountStatus(str, Enum):
+    """Distribution center account status."""
+    DRAFT = "draft"
+    ACTIVE = "active"
+    BLOCKED = "blocked"
+
+
+class DcOtpStatus(str, Enum):
+    """Distribution center OTP code status (one-time use)."""
+    PENDING = "pending"
+    USED = "used"

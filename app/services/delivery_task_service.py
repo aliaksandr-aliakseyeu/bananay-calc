@@ -23,6 +23,7 @@ from app.db.models import (
     DeliveryOrderItemDCAllocation,
     DeliveryOrderItemDCStatus,
     DeliveryOrderItemPoint,
+    DeliveryOrderItemPointScanEvent,
     DeliveryPoint,
     DistributionCenter,
     Sector,
@@ -30,6 +31,7 @@ from app.db.models import (
 from app.db.models.delivery_order import (
     DeliveryOrderStatusHistory,
     DeliveryPointStatus,
+    ItemPointScanPhase,
     OrderStatus,
 )
 from app.db.models.delivery_task import (
@@ -699,19 +701,8 @@ class DeliveryTaskService:
             )
             await self.db.flush()
 
-            points_result = await self.db.execute(
-                select(DeliveryOrderItemPoint)
-                .where(DeliveryOrderItemPoint.order_item_id.in_(order_item_ids))
-                .options(selectinload(DeliveryOrderItemPoint.delivery_point))
-            )
-            points_to_update = points_result.scalars().unique().all()
-            for pt in points_to_update:
-                if not pt.delivery_point:
-                    continue
-                dc = await self._get_dc_for_point(pt.delivery_point)
-                if dc and dc.id == dc_id and pt.status == DeliveryPointStatus.IN_TRANSIT.value:
-                    pt.status = DeliveryPointStatus.AT_DC.value
-            await self.db.flush()
+            # Point-level acceptance at DC is now confirmed by RC QR scan,
+            # so unload_at_dc no longer changes DeliveryOrderItemPoint status.
 
         all_dc_delivered = all(
             d.status == DriverTaskDCStatus.DELIVERED.value
@@ -730,6 +721,153 @@ class DeliveryTaskService:
             task_id,
         )
         return task
+
+    async def get_dc_receiving_scan_status_for_unload(
+        self,
+        task_id: int,
+        dc_id: int,
+        driver_id: "uuid.UUID",
+    ) -> tuple[int, int] | None:
+        """
+        For a task+dc, return (expected_count, received_count) of item-point QR scans at DC.
+
+        expected_count: number of item points in this task (same order + warehouse)
+        that belong to the specified DC.
+        received_count: how many of expected points already have a DC receiving-stage event
+        (RECEIVED_AT_DC or later).
+
+        Returns None when task/DC is not valid for this driver/context.
+        """
+        task_result = await self.db.execute(
+            select(DriverDeliveryTask)
+            .where(DriverDeliveryTask.id == task_id)
+            .options(selectinload(DriverDeliveryTask.dc_deliveries))
+        )
+        task = task_result.scalar_one_or_none()
+        if not task or task.driver_id != driver_id:
+            return None
+        if task.status not in (
+            DriverTaskStatus.IN_TRANSIT.value,
+            DriverTaskStatus.PARTIALLY_DELIVERED.value,
+        ):
+            return None
+        dc_del = next((d for d in task.dc_deliveries if d.dc_id == dc_id), None)
+        if not dc_del or dc_del.status == DriverTaskDCStatus.DELIVERED.value:
+            return None
+
+        points_result = await self.db.execute(
+            select(DeliveryOrderItemPoint)
+            .join(DeliveryOrderItem, DeliveryOrderItem.id == DeliveryOrderItemPoint.order_item_id)
+            .options(selectinload(DeliveryOrderItemPoint.delivery_point))
+            .where(
+                DeliveryOrderItem.order_id == task.order_id,
+                DeliveryOrderItem.warehouse_lat == task.warehouse_lat,
+                DeliveryOrderItem.warehouse_lon == task.warehouse_lon,
+            )
+        )
+        points = points_result.scalars().unique().all()
+        if not points:
+            return (0, 0)
+
+        delivery_point_ids = list(
+            {
+                point.delivery_point.id
+                for point in points
+                if point.delivery_point is not None
+            }
+        )
+
+        point_sector_map: dict[int, int] = {}
+        if delivery_point_ids:
+            point_sector_rows = await self.db.execute(
+                select(DeliveryPoint.id, Sector.id)
+                .select_from(DeliveryPoint)
+                .join(Sector, func.ST_Within(DeliveryPoint.location, Sector.boundary))
+                .where(DeliveryPoint.id.in_(delivery_point_ids))
+                .order_by(DeliveryPoint.id.asc(), Sector.id.asc())
+            )
+            for point_id, sector_id in point_sector_rows.all():
+                point_sector_map.setdefault(point_id, sector_id)
+
+        sector_ids = list(set(point_sector_map.values()))
+        sector_dc_map: dict[int, int] = {}
+        if sector_ids:
+            sector_dc_rows = await self.db.execute(
+                select(Sector.id, DistributionCenter.id)
+                .select_from(Sector)
+                .join(
+                    DistributionCenter,
+                    func.ST_Within(DistributionCenter.location, Sector.boundary),
+                )
+                .where(
+                    Sector.id.in_(sector_ids),
+                    DistributionCenter.is_active == True,  # noqa: E712
+                )
+                .order_by(Sector.id.asc(), DistributionCenter.id.asc())
+            )
+            for sector_id, resolved_dc_id in sector_dc_rows.all():
+                sector_dc_map.setdefault(sector_id, resolved_dc_id)
+
+        active_dcs_result = await self.db.execute(
+            select(DistributionCenter).where(
+                DistributionCenter.is_active == True  # noqa: E712
+            )
+        )
+        active_dcs = active_dcs_result.scalars().all()
+
+        point_to_dc_map: dict[int, int | None] = {}
+        nearest_dc_by_delivery_point_id: dict[int, int | None] = {}
+        for point in points:
+            if point.delivery_point is None:
+                point_to_dc_map[point.id] = None
+                continue
+            dp_id = point.delivery_point.id
+            sector_id = point_sector_map.get(dp_id)
+            resolved_dc_id = sector_dc_map.get(sector_id) if sector_id is not None else None
+            if resolved_dc_id is None:
+                if dp_id not in nearest_dc_by_delivery_point_id:
+                    lat, lon = self.distance_service.extract_coordinates(
+                        point.delivery_point.location
+                    )
+                    best_dc_id = None
+                    best_dist = float("inf")
+                    for active_dc in active_dcs:
+                        dc_lat, dc_lon = self.distance_service.extract_coordinates(
+                            active_dc.location
+                        )
+                        dist = self.distance_service.haversine_distance(
+                            lat, lon, dc_lat, dc_lon
+                        )
+                        if dist < best_dist:
+                            best_dist = dist
+                            best_dc_id = active_dc.id
+                    nearest_dc_by_delivery_point_id[dp_id] = best_dc_id
+                resolved_dc_id = nearest_dc_by_delivery_point_id[dp_id]
+            point_to_dc_map[point.id] = resolved_dc_id
+
+        expected_point_ids = {
+            point.id for point in points if point_to_dc_map.get(point.id) == dc_id
+        }
+        if not expected_point_ids:
+            return (0, 0)
+
+        received_phases = (
+            ItemPointScanPhase.RECEIVED_AT_DC,
+            ItemPointScanPhase.MOVED_TO_SORTING,
+            ItemPointScanPhase.SORTED_TO_ZONE,
+            ItemPointScanPhase.HANDED_TO_COURIER2,
+        )
+        received_rows = await self.db.execute(
+            select(func.distinct(DeliveryOrderItemPointScanEvent.delivery_order_item_point_id))
+            .where(
+                DeliveryOrderItemPointScanEvent.delivery_order_item_point_id.in_(
+                    list(expected_point_ids)
+                ),
+                DeliveryOrderItemPointScanEvent.phase.in_(received_phases),
+            )
+        )
+        received_point_ids = {row[0] for row in received_rows.all()}
+        return (len(expected_point_ids), len(received_point_ids))
 
     async def complete_task(
         self, task_id: int, driver_id: "uuid.UUID"

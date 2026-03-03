@@ -572,6 +572,22 @@ async def unload_at_dc(
             detail="Only active drivers can update task",
         )
     service = DeliveryTaskService(db)
+    receiving_status = await service.get_dc_receiving_scan_status_for_unload(
+        task_id=task_id,
+        dc_id=dc_id,
+        driver_id=driver.id,
+    )
+    if receiving_status is not None:
+        expected_count, received_count = receiving_status
+        if received_count < expected_count:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "cannot_unload_dc_not_fully_received",
+                    "expected_count": expected_count,
+                    "received_count": received_count,
+                },
+            )
     task = await service.unload_at_dc(task_id, dc_id, driver.id)
     if not task:
         raise HTTPException(

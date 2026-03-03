@@ -30,9 +30,10 @@ from app.db.models.driver_telegram_binding import DriverTelegramBinding
 from app.db.models.driver_vehicle import DriverVehicle
 from app.db.models.enums import (DailyCheckInPhotoKind, DailyCheckInStatus,
                                  DriverAccountStatus, DriverApplicationStatus,
-                                 DriverOtpStatus, MediaFileOwnerType,
-                                 OnboardingStatus, RegionType, SettlementType,
-                                 TutorialStatus, TutorialType, UserRole)
+                                 DcAccountStatus, DcOtpStatus, DriverOtpStatus,
+                                 MediaFileOwnerType, OnboardingStatus, RegionType,
+                                 SettlementType, TutorialStatus,
+                                 TutorialType, UserRole)
 from app.db.models.media_file import MediaFile
 from app.db.models.producer_profile import ProducerProfile
 from app.db.models.producer_sku import ProducerSKU
@@ -40,6 +41,8 @@ from app.db.models.producer_tutorial import ProducerTutorial
 from app.db.models.product_category import ProductCategory
 from app.db.models.region import Region
 from app.db.models.region_pricing import RegionPricing
+from app.db.models.dc_account import DcAccount
+from app.db.models.dc_otp_code import DcOtpCode
 from app.db.models.sector import Sector
 from app.db.models.settlement import Settlement
 from app.db.models.temperature_mode import TemperatureMode
@@ -67,6 +70,8 @@ __all__ = [
     "DriverAccountStatus",
     "DriverApplicationStatus",
     "DriverOtpStatus",
+    "DcAccountStatus",
+    "DcOtpStatus",
     "DailyCheckInStatus",
     "DailyCheckInPhotoKind",
     "MediaFileOwnerType",
@@ -87,6 +92,8 @@ __all__ = [
     "MediaFile",
     "DriverLastLocation",
     "DriverOtpCode",
+    "DcAccount",
+    "DcOtpCode",
     "DeliveryList",
     "DeliveryListItem",
     "DeliveryTemplate",

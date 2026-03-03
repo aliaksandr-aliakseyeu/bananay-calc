@@ -7,10 +7,10 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_driver_id_from_token, get_user_id_from_token
+from app.core.security import get_dc_id_from_token, get_driver_id_from_token, get_user_id_from_token
 from app.db.base import get_db
-from app.db.models import DriverAccount, User
-from app.db.models.enums import DriverAccountStatus, OnboardingStatus, UserRole
+from app.db.models import DcAccount, DriverAccount, User
+from app.db.models.enums import DcAccountStatus, DriverAccountStatus, OnboardingStatus, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -171,6 +171,37 @@ async def get_current_driver(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return driver
+
+
+async def get_current_dc(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DcAccount:
+    """Dependency for DC endpoints. Validates JWT with subject_type=dc and returns DcAccount."""
+    dc_id_str = get_dc_id_from_token(token)
+    try:
+        dc_uuid = uuid.UUID(dc_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    result = await db.execute(select(DcAccount).where(DcAccount.id == dc_uuid))
+    dc = result.scalar_one_or_none()
+    if dc is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="DC account not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if dc.status == DcAccountStatus.BLOCKED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is blocked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return dc
 
 
 async def get_current_driver_from_query(
