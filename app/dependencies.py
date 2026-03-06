@@ -7,10 +7,12 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_dc_id_from_token, get_driver_id_from_token, get_user_id_from_token
+from app.core.security import (get_courier_id_from_token, get_dc_id_from_token,
+                               get_driver_id_from_token, get_user_id_from_token)
 from app.db.base import get_db
-from app.db.models import DcAccount, DriverAccount, User
-from app.db.models.enums import DcAccountStatus, DriverAccountStatus, OnboardingStatus, UserRole
+from app.db.models import CourierAccount, DcAccount, DriverAccount, User
+from app.db.models.enums import (CourierAccountStatus, DcAccountStatus,
+                                 DriverAccountStatus, OnboardingStatus, UserRole)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -202,6 +204,74 @@ async def get_current_dc(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return dc
+
+
+async def get_current_courier(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> CourierAccount:
+    """Dependency for courier endpoints. Validates JWT with subject_type=courier and returns CourierAccount."""
+    courier_id_str = get_courier_id_from_token(token)
+    try:
+        courier_uuid = uuid.UUID(courier_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    result = await db.execute(select(CourierAccount).where(CourierAccount.id == courier_uuid))
+    courier = result.scalar_one_or_none()
+    if courier is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Courier not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if courier.status == CourierAccountStatus.BLOCKED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is blocked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return courier
+
+
+async def get_current_courier_from_query(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    token: Annotated[str | None, Query(alias="token", description="Bearer token for SSE (EventSource)")] = None,
+) -> CourierAccount:
+    """Same as get_current_courier but reads token from query string (for SSE)."""
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token required (query param: token)",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    courier_id_str = get_courier_id_from_token(token)
+    try:
+        courier_uuid = uuid.UUID(courier_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    result = await db.execute(select(CourierAccount).where(CourierAccount.id == courier_uuid))
+    courier = result.scalar_one_or_none()
+    if courier is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Courier not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if courier.status == CourierAccountStatus.BLOCKED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is blocked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return courier
 
 
 async def get_current_driver_from_query(

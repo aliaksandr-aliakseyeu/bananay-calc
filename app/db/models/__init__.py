@@ -24,6 +24,7 @@ from app.db.models.distribution_center import DistributionCenter
 from app.db.models.district import District
 from app.db.models.driver_account import DriverAccount
 from app.db.models.driver_application import DriverApplication
+from app.db.models.courier_location import CourierLastLocation
 from app.db.models.driver_location import DriverLastLocation
 from app.db.models.driver_otp_code import DriverOtpCode
 from app.db.models.driver_telegram_binding import DriverTelegramBinding
@@ -31,6 +32,8 @@ from app.db.models.driver_vehicle import DriverVehicle
 from app.db.models.enums import (DailyCheckInPhotoKind, DailyCheckInStatus,
                                  DriverAccountStatus, DriverApplicationStatus,
                                  DcAccountStatus, DcOtpStatus, DriverOtpStatus,
+                                 CourierAccountStatus, CourierApplicationStatus,
+                                 CourierOtpStatus, CourierTaskStatus,
                                  MediaFileOwnerType, OnboardingStatus, RegionType,
                                  SettlementType, TutorialStatus,
                                  TutorialType, UserRole)
@@ -43,6 +46,12 @@ from app.db.models.region import Region
 from app.db.models.region_pricing import RegionPricing
 from app.db.models.dc_account import DcAccount
 from app.db.models.dc_otp_code import DcOtpCode
+from app.db.models.courier_account import CourierAccount
+from app.db.models.courier_vehicle import CourierVehicle
+from app.db.models.courier_application import CourierApplication
+from app.db.models.courier_otp_code import CourierOtpCode
+from app.db.models.courier_daily_checkin import CourierDailyCheckIn, CourierDailyCheckInPhoto
+from app.db.models.courier_delivery_task import CourierDeliveryTask
 from app.db.models.sector import Sector
 from app.db.models.settlement import Settlement
 from app.db.models.temperature_mode import TemperatureMode
@@ -90,10 +99,22 @@ __all__ = [
     "DriverApplication",
     "DriverTelegramBinding",
     "MediaFile",
+    "CourierLastLocation",
     "DriverLastLocation",
     "DriverOtpCode",
     "DcAccount",
     "DcOtpCode",
+    "CourierAccount",
+    "CourierVehicle",
+    "CourierApplication",
+    "CourierOtpCode",
+    "CourierDailyCheckIn",
+    "CourierDailyCheckInPhoto",
+    "CourierDeliveryTask",
+    "CourierAccountStatus",
+    "CourierApplicationStatus",
+    "CourierOtpStatus",
+    "CourierTaskStatus",
     "DeliveryList",
     "DeliveryListItem",
     "DeliveryTemplate",

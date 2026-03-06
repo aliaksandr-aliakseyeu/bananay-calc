@@ -6,8 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models.delivery_template import (DeliveryTemplate,
-                                             DeliveryTemplatePoint)
+from app.db.models.delivery_template import DeliveryTemplate, DeliveryTemplatePoint
 from app.db.models.producer_sku import ProducerSKU
 from app.schemas.calculator import ProductParams
 from app.services.calculator_service import CalculatorService
@@ -279,11 +278,11 @@ class DeliveryTemplateService:
     ) -> int:
         """
         Sync template points in batch.
-        
+
         For each point in points_data:
         - If point already exists: update quantity
         - If point doesn't exist: create new
-        
+
         Returns: number of points processed
         """
         result = await db.execute(
@@ -293,19 +292,19 @@ class DeliveryTemplateService:
         )
         existing_points = result.scalars().all()
         existing_map = {p.delivery_point_id: p for p in existing_points}
-        
+
         template = await db.get(DeliveryTemplate, template_id)
         if not template:
             raise ValueError("Template not found")
-        
+
         total_quantity_change = 0
         processed_count = 0
-        
+
         for point_data in points_data:
             delivery_point_id = point_data['delivery_point_id']
             new_quantity = point_data['quantity']
             notes = point_data.get('notes')
-            
+
             if delivery_point_id in existing_map:
                 existing_point = existing_map[delivery_point_id]
                 old_quantity = existing_point.quantity
@@ -322,13 +321,13 @@ class DeliveryTemplateService:
                 )
                 db.add(new_point)
                 total_quantity_change += new_quantity
-            
+
             processed_count += 1
-        
+
         template.total_quantity += total_quantity_change
-        
+
         await db.commit()
-        
+
         return processed_count
 
     @staticmethod
@@ -394,8 +393,7 @@ class DeliveryTemplateService:
         if not template:
             raise ValueError("Template not found")
 
-        from app.db.models.delivery_order import (DeliveryOrder,
-                                                  DeliveryOrderItem)
+        from app.db.models.delivery_order import DeliveryOrder, DeliveryOrderItem
 
         result = await db.execute(
             select(DeliveryOrderItem, DeliveryOrder)

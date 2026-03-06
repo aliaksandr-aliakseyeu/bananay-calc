@@ -12,8 +12,11 @@ from sqlalchemy.orm import joinedload
 from app.db.base import get_db
 from app.db.models import User
 from app.db.models.driver_account import DriverAccount
-from app.db.models.enums import (DriverAccountStatus, DriverApplicationStatus,
-                                 MediaFileOwnerType)
+from app.db.models.enums import (
+    DriverAccountStatus,
+    DriverApplicationStatus,
+    MediaFileOwnerType,
+)
 from app.db.models.media_file import MediaFile
 from app.dependencies import get_current_admin
 from app.services.azure_blob_service import download_blob

@@ -48,19 +48,19 @@ class DeliveryListService:
                 )
                 .order_by(DeliveryList.is_default.desc(), DeliveryList.created_at.desc())
             )
-            
+
             if search:
                 search_filter = f"%{search}%"
                 query = query.where(
                     (DeliveryList.name.ilike(search_filter)) |
                     (DeliveryList.description.ilike(search_filter))
                 )
-            
+
             if limit is not None:
                 query = query.limit(limit)
             if offset is not None:
                 query = query.offset(offset)
-            
+
             result = await db.execute(query)
             return result.scalars().all()
         else:
@@ -74,22 +74,22 @@ class DeliveryListService:
                 .group_by(DeliveryList.id)
                 .order_by(DeliveryList.is_default.desc(), DeliveryList.created_at.desc())
             )
-            
+
             if search:
                 search_filter = f"%{search}%"
                 query = query.where(
                     (DeliveryList.name.ilike(search_filter)) |
                     (DeliveryList.description.ilike(search_filter))
                 )
-            
+
             if limit is not None:
                 query = query.limit(limit)
             if offset is not None:
                 query = query.offset(offset)
-            
+
             result = await db.execute(query)
             return result.all()
-    
+
     @staticmethod
     async def count_user_lists(
         db: AsyncSession,
@@ -108,14 +108,14 @@ class DeliveryListService:
             Total count of lists
         """
         query = select(func.count(DeliveryList.id)).where(DeliveryList.user_id == user_id)
-        
+
         if search:
             search_filter = f"%{search}%"
             query = query.where(
                 (DeliveryList.name.ilike(search_filter)) |
                 (DeliveryList.description.ilike(search_filter))
             )
-        
+
         result = await db.execute(query)
         return result.scalar_one()
 

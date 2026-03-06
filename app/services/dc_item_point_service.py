@@ -9,10 +9,17 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import (DcAccount, DeliveryOrder, DeliveryOrderItem,
-                           DeliveryOrderItemPoint,
-                           DeliveryOrderItemPointScanEvent, DeliveryPoint,
-                           DeliveryPointStatus, DistributionCenter, Sector)
+from app.db.models import (
+    CourierDeliveryTask,
+    DcAccount,
+    DeliveryOrderItem,
+    DeliveryOrderItemPoint,
+    DeliveryOrderItemPointScanEvent,
+    DeliveryPoint,
+    DeliveryPointStatus,
+    DistributionCenter,
+    Sector,
+)
 from app.db.models.delivery_order import ItemPointScanPhase
 from app.services.delivery_task_service import DeliveryTaskService
 
@@ -179,6 +186,8 @@ class DcItemPointService:
                 return DcItemPointScanResult(item_point, latest, latest.phase, True, dc_id)
             if latest_phase != required_prev:
                 raise ValueError("invalid_stage_transition")
+            if target_phase == ItemPointScanPhase.HANDED_TO_COURIER2:
+                item_point.status = DeliveryPointStatus.IN_TRANSIT
 
         event = await self._record_event(
             item_point_id=item_point.id,
@@ -222,10 +231,9 @@ class DcItemPointService:
         item_point = await self._get_item_point(qr_token)
         if not item_point:
             raise ValueError("item_point_not_found")
-        dc_id = await self._ensure_dc_can_scan(dc, item_point)
+        await self._ensure_dc_can_scan(dc, item_point)
         if item_point.order_item.order_id != order_id:
             raise ValueError("item_point_belongs_to_another_order")
-        # Avoid a second full validation/query cycle inside scan_receive.
         return await self._transition(
             dc=dc,
             qr_token=qr_token,
@@ -572,4 +580,43 @@ class DcItemPointService:
             dc_id = await self._resolve_point_dc_id(item_point)
             if dc_id == dc.distribution_center_id:
                 filtered.append((event, item_point))
+        return filtered
+
+    async def list_delivered_events(
+        self,
+        dc: DcAccount,
+        limit: int = 500,
+        offset: int = 0,
+    ) -> list[tuple[CourierDeliveryTask, DeliveryOrderItemPoint]]:
+        """List courier deliveries to final points for items that passed through this DC."""
+        if dc.distribution_center_id is None:
+            return []
+        result = await self.db.execute(
+            select(CourierDeliveryTask, DeliveryOrderItemPoint)
+            .join(
+                DeliveryOrderItemPoint,
+                CourierDeliveryTask.item_point_id == DeliveryOrderItemPoint.id,
+            )
+            .options(
+                selectinload(CourierDeliveryTask.courier),
+                selectinload(DeliveryOrderItemPoint.order_item).selectinload(
+                    DeliveryOrderItem.producer_sku
+                ),
+                selectinload(DeliveryOrderItemPoint.order_item).selectinload(DeliveryOrderItem.order),
+                selectinload(DeliveryOrderItemPoint.delivery_point),
+            )
+            .where(CourierDeliveryTask.delivered_at.isnot(None))
+            .order_by(
+                CourierDeliveryTask.delivered_at.desc(),
+                CourierDeliveryTask.id.desc(),
+            )
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = result.all()
+        filtered: list[tuple[CourierDeliveryTask, DeliveryOrderItemPoint]] = []
+        for task, item_point in rows:
+            dc_id = await self._resolve_point_dc_id(item_point)
+            if dc_id == dc.distribution_center_id:
+                filtered.append((task, item_point))
         return filtered

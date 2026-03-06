@@ -6,12 +6,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models.delivery_order import (DeliveryOrder, DeliveryOrderItem,
-                                          DeliveryOrderItemPoint,
-                                          DeliveryOrderStatusHistory,
-                                          DeliveryPointStatus,
-                                          OrderStatus)
-from app.db.models.distribution_center import DistributionCenter
+from app.db.models.delivery_order import (
+    DeliveryOrder,
+    DeliveryOrderItem,
+    DeliveryOrderItemPoint,
+    DeliveryOrderStatusHistory,
+    DeliveryPointStatus,
+    OrderStatus,
+)
 from app.db.models.delivery_task import DriverDeliveryTask, DriverTaskDCDelivery
 from app.db.models.driver_account import DriverAccount
 from app.schemas.delivery_order_new import (

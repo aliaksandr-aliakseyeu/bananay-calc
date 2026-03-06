@@ -2,27 +2,40 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
 from app.db.models import DcAccount, DistributionCenter
+from app.db.models.courier_delivery_task import CourierDeliveryTask
 from app.db.models.delivery_order import ItemPointScanPhase
-from app.db.models.enums import DcAccountStatus
+from app.db.models.enums import CourierTaskStatus, DcAccountStatus
 from app.dependencies import get_current_dc
-from app.schemas.dc import (DcBoxItemResponse, DcBoxScanResponse,
-                            DcHistoryEventResponse,
-                            DcOperationEventResponse, DcOperationResponse,
-                            DcProfileResponse, DcProfileUpdate,
-                            DcReceiveForOrderResponse, DcReceivingOrderResponse,
-                            DcScanHandoverCourier2Request,
-                            DcScanMoveToSortingRequest, DcScanReceiveForOrderRequest,
-                            DcScanReceiveRequest,
-                            DcScanSortToZoneRequest)
+from app.schemas.dc import (
+    DcBoxItemResponse,
+    DcBoxScanResponse,
+    DcDeliveredEventResponse,
+    DcHistoryEventResponse,
+    DcOperationEventResponse,
+    DcOperationResponse,
+    DcProfileResponse,
+    DcProfileUpdate,
+    DcReceiveForOrderResponse,
+    DcReceivingOrderResponse,
+    DcScanHandoverCourier2Request,
+    DcScanMoveToSortingRequest,
+    DcScanReceiveForOrderRequest,
+    DcScanReceiveRequest,
+    DcScanSortToZoneRequest,
+)
 from app.services.dc_item_point_service import DcItemPointService
+from app.services.delivery_order_service import DeliveryOrderService
+from app.services.driver_location_sse import driver_location_sse
+from app.services.sse_manager import driver_sse_manager
 
 router = APIRouter(prefix="/dc", tags=["DC"])
 DEFAULT_SORTING_ZONE_KEY = "default_zone"
@@ -217,6 +230,7 @@ async def scan_handover_courier2(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DcBoxScanResponse:
     """Step 4: handover box to courier #2."""
+
     service = DcItemPointService(db)
     operation_id = body.operation_id or uuid.uuid4()
     try:
@@ -230,7 +244,35 @@ async def scan_handover_courier2(
         )
     except ValueError as exc:
         raise _map_scan_error(str(exc))
+
+    if not result.is_idempotent:
+        courier_task_result = await db.execute(
+            select(CourierDeliveryTask).where(
+                CourierDeliveryTask.item_point_id == result.item_point.id,
+                CourierDeliveryTask.status == CourierTaskStatus.ASSIGNED.value,
+            )
+        )
+        courier_task = courier_task_result.scalar_one_or_none()
+        if courier_task:
+            courier_task.status = CourierTaskStatus.IN_TRANSIT.value
+            courier_task.in_transit_at = datetime.now(timezone.utc)
+            await db.flush()
+            driver_sse_manager.send_to_driver(
+                str(courier_task.courier_id),
+                "task_updated",
+                {"task_id": courier_task.id, "status": "in_transit"},
+            )
+
     await db.commit()
+
+    if not result.is_idempotent:
+        order_id = result.item_point.order_item.order_id
+        snapshot = await DeliveryOrderService.get_order_snapshot_for_sse(db, order_id)
+        if snapshot is not None:
+            driver_location_sse.broadcast_to_order(
+                order_id, {"event": "order_update", **snapshot}
+            )
+
     return DcBoxScanResponse(
         qr_token=result.item_point.qr_token,
         delivery_order_item_point_id=result.item_point.id,
@@ -241,6 +283,84 @@ async def scan_handover_courier2(
         operation_id=result.event.operation_id,
         is_idempotent=result.is_idempotent,
     )
+
+
+@router.get("/boxes/courier-info", summary="Get assigned courier info by box QR token")
+async def get_courier_info_by_qr(
+    qr_token: str,
+    dc: Annotated[DcAccount, Depends(get_current_dc)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Return assigned courier name, phone and order details for a given box QR.
+    Used by DC worker to verify the courier standing in front of them before handover."""
+    from app.db.models.courier_account import CourierAccount
+    from app.db.models.courier_delivery_task import CourierDeliveryTask
+    from app.db.models.delivery_order import (
+        DeliveryOrder,
+        DeliveryOrderItem,
+        DeliveryOrderItemPoint,
+    )
+    from app.db.models.enums import CourierTaskStatus, MediaFileOwnerType
+    from app.db.models.media_file import MediaFile
+
+    try:
+        parsed_qr = uuid.UUID(qr_token)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid QR token format")
+
+    ip_result = await db.execute(
+        select(DeliveryOrderItemPoint).where(DeliveryOrderItemPoint.qr_token == parsed_qr)
+    )
+    item_point = ip_result.scalar_one_or_none()
+    if not item_point:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Box not found")
+
+    task_result = await db.execute(
+        select(CourierDeliveryTask).where(
+            CourierDeliveryTask.item_point_id == item_point.id,
+            CourierDeliveryTask.status == CourierTaskStatus.ASSIGNED.value,
+        )
+    )
+    task = task_result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No courier assigned to this box")
+
+    courier_result = await db.execute(
+        select(CourierAccount).where(CourierAccount.id == task.courier_id)
+    )
+    courier = courier_result.scalar_one_or_none()
+    if not courier:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Courier not found")
+
+    order_item_result = await db.execute(
+        select(DeliveryOrderItem, DeliveryOrder)
+        .join(DeliveryOrder, DeliveryOrder.id == DeliveryOrderItem.order_id)
+        .where(DeliveryOrderItem.id == item_point.order_item_id)
+    )
+    order_row = order_item_result.first()
+    order_number = order_row[1].order_number if order_row else None
+    order_id = order_row[1].id if order_row else None
+
+    selfie_result = await db.execute(
+        select(MediaFile).where(
+            MediaFile.owner_id == courier.id,
+            MediaFile.owner_type == MediaFileOwnerType.COURIER,
+            MediaFile.kind == "selfie",
+        ).order_by(MediaFile.created_at.desc()).limit(1)
+    )
+    selfie = selfie_result.scalar_one_or_none()
+
+    return {
+        "task_id": task.id,
+        "item_point_id": item_point.id,
+        "qr_token": str(item_point.qr_token),
+        "order_id": order_id,
+        "order_number": order_number,
+        "courier_id": str(courier.id),
+        "courier_name": courier.full_name or None,
+        "courier_phone": courier.phone_e164,
+        "courier_photo_media_id": str(selfie.id) if selfie else None,
+    }
 
 
 @router.get("/boxes", response_model=list[DcBoxItemResponse])
@@ -354,6 +474,39 @@ async def list_history_events(
     return out
 
 
+@router.get("/history/delivered", response_model=list[DcDeliveredEventResponse])
+async def list_delivered_events(
+    dc: Annotated[DcAccount, Depends(get_current_dc)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(500, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
+) -> list[DcDeliveredEventResponse]:
+    """List deliveries to final points (courier delivered to customer) for items that passed through this DC."""
+    service = DcItemPointService(db)
+    rows = await service.list_delivered_events(dc=dc, limit=limit, offset=offset)
+    out: list[DcDeliveredEventResponse] = []
+    for task, item_point in rows:
+        courier_name = (task.courier.full_name or "").strip() or None if task.courier else None
+        out.append(
+            DcDeliveredEventResponse(
+                task_id=task.id,
+                delivered_at=task.delivered_at,
+                courier_name=courier_name,
+                qr_token=item_point.qr_token,
+                delivery_order_item_point_id=item_point.id,
+                order_id=item_point.order_item.order_id,
+                order_number=getattr(item_point.order_item.order, "order_number", None),
+                delivery_point_name=(
+                    getattr(item_point.delivery_point, "name", None)
+                    or getattr(item_point.delivery_point, "title", None)
+                ),
+                sku_name=getattr(item_point.order_item.producer_sku, "name", None),
+                quantity=item_point.quantity,
+            )
+        )
+    return out
+
+
 @router.get("/receiving/orders", response_model=list[DcReceivingOrderResponse])
 async def list_receiving_orders(
     dc: Annotated[DcAccount, Depends(get_current_dc)],
@@ -417,3 +570,25 @@ async def scan_receive_for_order(
         received_count=received_count,
         remaining_count=max(expected_count - received_count, 0),
     )
+
+
+@router.get("/media/{media_id}", summary="Stream media file for DC workers (e.g. courier selfie)")
+async def get_dc_media(
+    media_id: uuid.UUID,
+    dc: Annotated[DcAccount, Depends(get_current_dc)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """Stream a media file. Used by DC workers to view courier photos during handover."""
+    from app.db.models.media_file import MediaFile
+    from app.services.azure_blob_service import download_blob
+
+    result = await db.execute(select(MediaFile).where(MediaFile.id == media_id))
+    media = result.scalar_one_or_none()
+    if not media:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media not found")
+
+    out = download_blob(media.blob_path)
+    if out is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media file not found in storage")
+    content, content_type = out
+    return Response(content=content, media_type=content_type or "application/octet-stream")
