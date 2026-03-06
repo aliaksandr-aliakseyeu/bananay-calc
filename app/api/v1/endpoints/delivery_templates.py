@@ -9,11 +9,17 @@ from app.db.models import User
 from app.dependencies import get_current_user
 from app.schemas.common import PaginatedResponse
 from app.schemas.delivery_template import (
-    DeliveryTemplateCalculateResponse, DeliveryTemplateCreate,
-    DeliveryTemplateDetailResponse, DeliveryTemplatePointCreate,
-    DeliveryTemplatePointResponse, DeliveryTemplatePointUpdate,
-    DeliveryTemplateResponse, DeliveryTemplateSyncPointsRequest,
-    DeliveryTemplateUpdate, DeliveryTemplateUsageHistoryResponse)
+    DeliveryTemplateCalculateResponse,
+    DeliveryTemplateCreate,
+    DeliveryTemplateDetailResponse,
+    DeliveryTemplatePointCreate,
+    DeliveryTemplatePointResponse,
+    DeliveryTemplatePointUpdate,
+    DeliveryTemplateResponse,
+    DeliveryTemplateSyncPointsRequest,
+    DeliveryTemplateUpdate,
+    DeliveryTemplateUsageHistoryResponse,
+)
 from app.services.delivery_template_service import DeliveryTemplateService
 
 router = APIRouter(prefix="/delivery-templates", tags=["Delivery Templates"])
@@ -56,7 +62,7 @@ async def get_user_templates(
     result = []
     for template in templates:
         template_dict = DeliveryTemplateDetailResponse.model_validate(template).model_dump()
-        
+
         if include_points and template.points:
             enriched_points = []
             for point in template.points:
@@ -66,9 +72,9 @@ async def get_user_templates(
                     point_dict['delivery_point_address'] = point.delivery_point.address
                 enriched_points.append(point_dict)
             template_dict['points'] = enriched_points
-        
+
         result.append(DeliveryTemplateDetailResponse.model_validate(template_dict))
-    
+
     return PaginatedResponse(items=result, total=total)
 
 
@@ -136,7 +142,7 @@ async def get_template(
         raise HTTPException(status_code=404, detail="Template not found")
 
     template_dict = DeliveryTemplateDetailResponse.model_validate(template).model_dump()
-    
+
     if template.points:
         enriched_points = []
         for point in template.points:
@@ -146,7 +152,7 @@ async def get_template(
                 point_dict['delivery_point_address'] = point.delivery_point.address
             enriched_points.append(point_dict)
         template_dict['points'] = enriched_points
-    
+
     return DeliveryTemplateDetailResponse.model_validate(template_dict)
 
 
@@ -239,20 +245,20 @@ async def sync_template_points(
 ) -> dict:
     """
     Sync template points in batch (create new or update existing).
-    
+
     For each point:
     - If the point already exists in template: update quantity
     - If the point doesn't exist: create new
-    
+
     This is more efficient than multiple individual requests.
     """
     template = await DeliveryTemplateService.get_template_by_id(
         db, template_id, current_user.id
     )
-    
+
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
-    
+
     try:
         points_list = [p.model_dump() for p in data.points]
         processed_count = await DeliveryTemplateService.sync_template_points(

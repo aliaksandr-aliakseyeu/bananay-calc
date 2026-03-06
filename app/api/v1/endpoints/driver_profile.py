@@ -69,7 +69,7 @@ async def update_me(
     if body.payout_account is not None:
         driver.payout_account = body.payout_account.strip() or None
     await db.commit()
-    await db.refresh(driver)
+    await db.refresh(driver, ["vehicles"])
     can_submit, required = await check_can_submit(driver, db)
     return DriverProfileResponse(
         id=driver.id,

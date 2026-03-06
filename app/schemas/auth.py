@@ -189,3 +189,25 @@ class DcVerifyOtpResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     is_new_user: bool = False
+
+
+class CourierRequestOtp(BaseModel):
+    """Request OTP for courier login."""
+
+    phone_e164: str = Field(..., min_length=10, max_length=20)
+
+
+class CourierVerifyOtp(BaseModel):
+    """Verify OTP and get courier tokens."""
+
+    phone_e164: str = Field(..., min_length=10, max_length=20)
+    code: str = Field(..., min_length=4, max_length=10)
+
+
+class CourierVerifyOtpResponse(BaseModel):
+    """Response after courier OTP verification."""
+
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    is_new_user: bool = False

@@ -79,6 +79,8 @@ class MediaFileOwnerType(str, Enum):
     VEHICLE = "vehicle"
     DAILY_CHECKIN = "daily_checkin"
     DRIVER_DELIVERY_TASK = "driver_delivery_task"
+    COURIER = "courier"
+    COURIER_DELIVERY_TASK = "courier_delivery_task"
 
 
 class DriverOtpStatus(str, Enum):
@@ -117,3 +119,32 @@ class DcOtpStatus(str, Enum):
     """Distribution center OTP code status (one-time use)."""
     PENDING = "pending"
     USED = "used"
+
+
+class CourierAccountStatus(str, Enum):
+    """Courier account status."""
+    DRAFT = "draft"
+    PENDING_REVIEW = "pending_review"
+    ACTIVE = "active"
+    BLOCKED = "blocked"
+
+
+class CourierApplicationStatus(str, Enum):
+    """Courier application (KYC-lite) status."""
+    DRAFT = "draft"
+    PENDING_REVIEW = "pending_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class CourierOtpStatus(str, Enum):
+    """Courier OTP code status (one-time use)."""
+    PENDING = "pending"
+    USED = "used"
+
+
+class CourierTaskStatus(str, Enum):
+    """Courier delivery task status."""
+    ASSIGNED = "assigned"
+    IN_TRANSIT = "in_transit"
+    DELIVERED = "delivered"

@@ -137,6 +137,21 @@ class DcHistoryEventResponse(BaseModel):
     payload: dict | None = None
 
 
+class DcDeliveredEventResponse(BaseModel):
+    """One delivered-to-customer event for DC history (courier delivered to final point)."""
+
+    task_id: int
+    delivered_at: datetime
+    courier_name: str | None = None
+    qr_token: UUID
+    delivery_order_item_point_id: int
+    order_id: int
+    order_number: str | None = None
+    delivery_point_name: str | None = None
+    sku_name: str | None = None
+    quantity: int | None = None
+
+
 class DcReceivingOrderResponse(BaseModel):
     """One order in receiving queue for current DC."""
 
