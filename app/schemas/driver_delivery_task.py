@@ -77,6 +77,20 @@ class CompletedTaskResponse(BaseModel):
     order_id: int = Field(..., description="Order ID")
     order_number: str = Field(..., description="Order number")
     delivered_at: datetime = Field(..., description="When the task was completed")
+    deliveries: list[DCDeliveryResponse] = Field(
+        default_factory=list,
+        description="DCs and SKUs delivered in this task",
+    )
+
+
+class CompletedTasksListResponse(BaseModel):
+    """Paginated list of completed delivery tasks."""
+
+    items: list[CompletedTaskResponse] = Field(
+        default_factory=list,
+        description="Tasks on this page",
+    )
+    total: int = Field(..., description="Total number of completed tasks")
 
 
 class ScanQrRequest(BaseModel):

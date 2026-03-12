@@ -2,7 +2,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -12,7 +12,8 @@ from app.db.base import get_db
 from app.db.models import DriverAccount, DriverDeliveryTask, MediaFile
 from app.db.models.enums import DriverAccountStatus, MediaFileOwnerType
 from app.dependencies import get_current_driver
-from app.schemas.driver_delivery_task import (CompletedTaskResponse,
+from app.schemas.driver_delivery_task import (CompletedTasksListResponse,
+                                              CompletedTaskResponse,
                                               DCDeliveryResponse,
                                               DeliveryTaskItem,
                                               DriverDeliveryTaskResponse,
@@ -96,17 +97,19 @@ async def get_delivery_tasks(
 
 @router.get(
     "/delivery-tasks/completed",
-    response_model=list[CompletedTaskResponse],
+    response_model=CompletedTasksListResponse,
     summary="Get my completed delivery tasks (history)",
 )
 async def get_completed_delivery_tasks(
     driver: Annotated[DriverAccount, Depends(get_current_driver)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> list[CompletedTaskResponse]:
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> CompletedTasksListResponse:
     """
     Get delivery tasks completed by the current driver (history).
 
-    Returns tasks with status DELIVERED, ordered by delivered_at descending.
+    Returns paginated tasks with status DELIVERED, ordered by delivered_at descending.
     """
     if driver.status != DriverAccountStatus.ACTIVE:
         raise HTTPException(
@@ -114,16 +117,41 @@ async def get_completed_delivery_tasks(
             detail="Only active drivers can view history",
         )
     service = DeliveryTaskService(db)
-    rows = await service.get_completed_tasks_for_driver(driver.id)
-    return [
+    total = await service.get_completed_tasks_count_for_driver(driver.id)
+    rows = await service.get_completed_tasks_with_deliveries_for_driver(
+        driver.id, limit=limit, offset=offset
+    )
+    items = [
         CompletedTaskResponse(
-            task_id=task_id,
-            order_id=order_id,
-            order_number=order_number,
+            task_id=task.task_id,
+            order_id=task.order_id,
+            order_number=task.order_number,
             delivered_at=delivered_at,
+            deliveries=[
+                DCDeliveryResponse(
+                    dc_id=d.dc_id,
+                    dc_name=d.dc_name,
+                    dc_address=d.dc_address,
+                    dc_lat=d.dc_lat,
+                    dc_lon=d.dc_lon,
+                    items=[
+                        DeliveryTaskItem(
+                            sku_name=i.sku_name,
+                            sku_code=i.sku_code or "",
+                            quantity=i.quantity,
+                        )
+                        for i in d.items
+                    ],
+                    status=d.dc_status,
+                    delivered_at=d.dc_delivered_at,
+                    unload_photo_media_id=d.unload_photo_media_id,
+                )
+                for d in task.deliveries
+            ],
         )
-        for task_id, order_id, order_number, delivered_at in rows
+        for task, delivered_at in rows
     ]
+    return CompletedTasksListResponse(items=items, total=total)
 
 
 @router.get(
