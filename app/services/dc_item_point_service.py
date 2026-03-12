@@ -115,6 +115,59 @@ class DcItemPointService:
         nearest = await task_service._find_nearest_dc(lat, lon)  # noqa: SLF001
         return nearest.id if nearest else None
 
+    async def _batch_resolve_point_dc_ids(
+        self,
+        item_points: list[DeliveryOrderItemPoint],
+    ) -> dict[int, int | None]:
+        """
+        Resolve distribution_center_id for many item_points in batch (avoids N+1).
+        Returns map: item_point.id -> dc_id or None.
+        """
+        if not item_points:
+            return {}
+        dp_ids = []
+        for ip in item_points:
+            if ip.delivery_point_id is not None:
+                dp_ids.append(ip.delivery_point_id)
+        dp_ids = list(dict.fromkeys(dp_ids))
+        dp_to_dc: dict[int, int] = {}
+        if dp_ids:
+            batch_result = await self.db.execute(
+                select(DeliveryPoint.id, DistributionCenter.id)
+                .select_from(DeliveryPoint)
+                .join(Sector, func.ST_Within(DeliveryPoint.location, Sector.boundary))
+                .join(
+                    DistributionCenter,
+                    (DistributionCenter.is_active == True)  # noqa: E712
+                    & func.ST_Within(DistributionCenter.location, Sector.boundary),
+                )
+                .where(DeliveryPoint.id.in_(dp_ids))
+            )
+            for row in batch_result.all():
+                dp_id, dc_id = row[0], row[1]
+                if dp_id not in dp_to_dc:
+                    dp_to_dc[dp_id] = dc_id
+        task_service = DeliveryTaskService(self.db)
+        all_dcs: list[DistributionCenter] | None = None
+        result: dict[int, int | None] = {}
+        for ip in item_points:
+            dc_id = None
+            if ip.delivery_point_id is not None:
+                dc_id = dp_to_dc.get(ip.delivery_point_id)
+            if dc_id is None and ip.delivery_point is not None and ip.delivery_point.location is not None:
+                if all_dcs is None:
+                    all_dcs = await task_service._load_all_active_dcs()
+                try:
+                    lat, lon = task_service.distance_service.extract_coordinates(
+                        ip.delivery_point.location
+                    )
+                    nearest = await task_service._find_nearest_dc(lat, lon, dcs=all_dcs)
+                    dc_id = nearest.id if nearest else None
+                except (ValueError, TypeError):
+                    dc_id = None
+            result[ip.id] = dc_id
+        return result
+
     async def _ensure_dc_can_scan(
         self,
         dc: DcAccount,
@@ -575,10 +628,11 @@ class DcItemPointService:
             .offset(offset)
         )
         rows = result.all()
+        item_points = [ip for _, ip in rows]
+        dc_map = await self._batch_resolve_point_dc_ids(item_points)
         filtered: list[tuple[DeliveryOrderItemPointScanEvent, DeliveryOrderItemPoint]] = []
         for event, item_point in rows:
-            dc_id = await self._resolve_point_dc_id(item_point)
-            if dc_id == dc.distribution_center_id:
+            if dc_map.get(item_point.id) == dc.distribution_center_id:
                 filtered.append((event, item_point))
         return filtered
 
@@ -614,9 +668,10 @@ class DcItemPointService:
             .offset(offset)
         )
         rows = result.all()
+        item_points = [ip for _, ip in rows]
+        dc_map = await self._batch_resolve_point_dc_ids(item_points)
         filtered: list[tuple[CourierDeliveryTask, DeliveryOrderItemPoint]] = []
         for task, item_point in rows:
-            dc_id = await self._resolve_point_dc_id(item_point)
-            if dc_id == dc.distribution_center_id:
+            if dc_map.get(item_point.id) == dc.distribution_center_id:
                 filtered.append((task, item_point))
         return filtered

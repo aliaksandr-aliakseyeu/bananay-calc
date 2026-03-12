@@ -131,8 +131,14 @@ class DeliveryTaskService:
         )
         return list(result.scalars().unique().all())
 
-    async def _find_dc_in_sector(self, sector: Sector) -> DistributionCenter | None:
+    async def _find_dc_in_sector(
+        self,
+        sector: Sector,
+        sector_dc_cache: dict[int, DistributionCenter | None] | None = None,
+    ) -> DistributionCenter | None:
         """Find first DC whose location is within sector boundary (ST_Within)."""
+        if sector_dc_cache is not None and sector.id in sector_dc_cache:
+            return sector_dc_cache[sector.id]
         result = await self.db.execute(
             select(DistributionCenter)
             .where(
@@ -142,18 +148,31 @@ class DeliveryTaskService:
             .order_by(DistributionCenter.id)
             .limit(1)
         )
-        return result.scalar_one_or_none()
+        dc = result.scalar_one_or_none()
+        if sector_dc_cache is not None:
+            sector_dc_cache[sector.id] = dc
+        return dc
 
-    async def _find_nearest_dc(
-        self, point_lat: float, point_lon: float
-    ) -> DistributionCenter | None:
-        """Find nearest active DC by straight-line distance (haversine)."""
+    async def _load_all_active_dcs(
+        self,
+    ) -> list[DistributionCenter]:
+        """Load all active DCs once (avoid N+1 in _find_nearest_dc)."""
         result = await self.db.execute(
             select(DistributionCenter).where(
                 DistributionCenter.is_active == True  # noqa: E712
             )
         )
-        dcs = result.scalars().all()
+        return list(result.scalars().unique().all())
+
+    async def _find_nearest_dc(
+        self,
+        point_lat: float,
+        point_lon: float,
+        dcs: list[DistributionCenter] | None = None,
+    ) -> DistributionCenter | None:
+        """Find nearest active DC by straight-line distance (haversine)."""
+        if dcs is None:
+            dcs = await self._load_all_active_dcs()
         if not dcs:
             return None
 
@@ -169,7 +188,12 @@ class DeliveryTaskService:
                 best_dc = dc
         return best_dc
 
-    async def _get_dc_for_point(self, point: DeliveryPoint) -> DistributionCenter | None:
+    async def _get_dc_for_point(
+        self,
+        point: DeliveryPoint,
+        all_dcs: list[DistributionCenter] | None = None,
+        sector_dc_cache: dict[int, DistributionCenter | None] | None = None,
+    ) -> DistributionCenter | None:
         """Get DC for delivery point: sector -> DC in sector, or nearest if not in sector."""
         sector_result = await self.db.execute(
             select(Sector)
@@ -181,12 +205,12 @@ class DeliveryTaskService:
         sector = sector_result.scalar_one_or_none()
 
         if sector:
-            dc = await self._find_dc_in_sector(sector)
+            dc = await self._find_dc_in_sector(sector, sector_dc_cache=sector_dc_cache)
             if dc:
                 return dc
 
         point_lat, point_lon = self.distance_service.extract_coordinates(point.location)
-        return await self._find_nearest_dc(point_lat, point_lon)
+        return await self._find_nearest_dc(point_lat, point_lon, dcs=all_dcs)
 
     async def create_dc_allocations_for_order(
         self, order: DeliveryOrder
@@ -409,6 +433,81 @@ class DeliveryTaskService:
         )
         rows = result.all()
         return [(r[0], r[1], r[2], r[3]) for r in rows]
+
+    async def get_completed_tasks_count_for_driver(
+        self, driver_id: "uuid.UUID"
+    ) -> int:
+        """Return total number of completed tasks for this driver."""
+        result = await self.db.execute(
+            select(func.count(DriverDeliveryTask.id))
+            .where(
+                DriverDeliveryTask.driver_id == driver_id,
+                DriverDeliveryTask.status == DriverTaskStatus.DELIVERED.value,
+                DriverDeliveryTask.delivered_at.isnot(None),
+            )
+        )
+        return result.scalar() or 0
+
+    async def get_completed_tasks_with_deliveries_for_driver(
+        self, driver_id: "uuid.UUID", limit: int = 100, offset: int = 0
+    ) -> list[tuple[DriverTask, datetime]]:
+        """
+        Get completed delivery tasks with full DC and SKU details for history.
+
+        Returns list of (DriverTask, delivered_at) ordered by delivered_at desc.
+        """
+        result = await self.db.execute(
+            select(DriverDeliveryTask)
+            .join(DeliveryOrder, DriverDeliveryTask.order_id == DeliveryOrder.id)
+            .where(
+                DriverDeliveryTask.driver_id == driver_id,
+                DriverDeliveryTask.status == DriverTaskStatus.DELIVERED.value,
+                DriverDeliveryTask.delivered_at.isnot(None),
+            )
+            .order_by(DriverDeliveryTask.delivered_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .options(selectinload(DriverDeliveryTask.dc_deliveries))
+        )
+        completed_tasks = list(result.scalars().unique().all())
+        if not completed_tasks:
+            return []
+
+        task_id_map: dict[tuple[int, WarehouseKey], int] = {}
+        delivered_at_by_task: dict[int, datetime] = {}
+        dc_deliveries_by_task: dict[int, list] = {}
+        for t in completed_tasks:
+            wh_key = WarehouseKey(lat=t.warehouse_lat, lon=t.warehouse_lon)
+            task_id_map[(t.order_id, wh_key)] = t.id
+            delivered_at_by_task[t.id] = t.delivered_at
+            dc_deliveries_by_task[t.id] = list(t.dc_deliveries)
+
+        order_ids = list({t.order_id for t in completed_tasks})
+        orders_result = await self.db.execute(
+            select(DeliveryOrder)
+            .where(DeliveryOrder.id.in_(order_ids))
+            .options(
+                selectinload(DeliveryOrder.items).selectinload(
+                    DeliveryOrderItem.points
+                ).selectinload(DeliveryOrderItemPoint.delivery_point),
+                selectinload(DeliveryOrder.items).selectinload(
+                    DeliveryOrderItem.producer_sku
+                ),
+            )
+        )
+        orders = list(orders_result.scalars().unique().all())
+        driver_tasks = await self._build_driver_tasks_internal(
+            orders,
+            task_id_map=task_id_map,
+            dc_deliveries_by_task=dc_deliveries_by_task,
+        )
+        # Preserve order by delivered_at desc
+        driver_tasks_sorted = sorted(
+            driver_tasks,
+            key=lambda t: delivered_at_by_task[t.task_id],
+            reverse=True,
+        )
+        return [(t, delivered_at_by_task[t.task_id]) for t in driver_tasks_sorted]
 
     async def take_task(
         self, task_id: int, driver_id: "uuid.UUID"
@@ -964,6 +1063,9 @@ class DeliveryTaskService:
             tuple[int, str, WarehouseKey],
             dict[int, dict[tuple[str, str], int]],
         ] = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+        dc_by_point_id: dict[int, DistributionCenter | None] = {}
+        sector_dc_cache: dict[int, DistributionCenter | None] = {}
+        all_dcs = await self._load_all_active_dcs()
 
         for order in orders:
             for item in order.items:
@@ -986,7 +1088,11 @@ class DeliveryTaskService:
                     dp = pt.delivery_point
                     if not dp:
                         continue
-                    dc = await self._get_dc_for_point(dp)
+                    if dp.id not in dc_by_point_id:
+                        dc_by_point_id[dp.id] = await self._get_dc_for_point(
+                            dp, all_dcs=all_dcs, sector_dc_cache=sector_dc_cache
+                        )
+                    dc = dc_by_point_id[dp.id]
                     if not dc:
                         logger.warning(
                             "No DC found for delivery point %s, skipping",
@@ -995,6 +1101,17 @@ class DeliveryTaskService:
                         continue
 
                     tasks_data[task_key][dc.id][(sku_name, sku_code)] += pt.quantity
+
+        all_dc_ids: set[int] = set()
+        for dc_sku_qtys in tasks_data.values():
+            all_dc_ids |= set(dc_sku_qtys.keys())
+        dc_rows_map: dict[int, DistributionCenter] = {}
+        if all_dc_ids:
+            dc_result = await self.db.execute(
+                select(DistributionCenter).where(DistributionCenter.id.in_(all_dc_ids))
+            )
+            for row in dc_result.scalars().unique().all():
+                dc_rows_map[row.id] = row
 
         result: list[DriverTask] = []
         for (order_id, order_number, wh_key), dc_sku_qtys in tasks_data.items():
@@ -1011,7 +1128,7 @@ class DeliveryTaskService:
                         getattr(d, "unload_photo_media_id", None),
                     )
             for dc_id, sku_qtys in dc_sku_qtys.items():
-                dc_row = await self.db.get(DistributionCenter, dc_id)
+                dc_row = dc_rows_map.get(dc_id)
                 if not dc_row:
                     continue
                 dc_lat, dc_lon = self.distance_service.extract_coordinates(
