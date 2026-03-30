@@ -143,6 +143,21 @@ class CourierOtpStatus(str, Enum):
     USED = "used"
 
 
+class DeliveryPointAccountStatus(str, Enum):
+    """Delivery point account status."""
+    DRAFT = "draft"
+    PENDING_REVIEW = "pending_review"
+    ACTIVE = "active"
+    REJECTED = "rejected"
+    BLOCKED = "blocked"
+
+
+class DeliveryPointOtpStatus(str, Enum):
+    """Delivery point OTP code status (one-time use)."""
+    PENDING = "pending"
+    USED = "used"
+
+
 class CourierTaskStatus(str, Enum):
     """Courier delivery task status."""
     ASSIGNED = "assigned"

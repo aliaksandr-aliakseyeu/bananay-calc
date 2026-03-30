@@ -4,14 +4,17 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import (get_courier_id_from_token, get_dc_id_from_token,
+                               get_delivery_point_id_from_token,
                                get_driver_id_from_token, get_user_id_from_token)
 from app.db.base import get_db
-from app.db.models import CourierAccount, DcAccount, DriverAccount, User
+from app.db.models import (CourierAccount, DcAccount, DeliveryPointAccount,
+                           DeliveryPointAccountPoint, DriverAccount, User)
 from app.db.models.enums import (CourierAccountStatus, DcAccountStatus,
+                                 DeliveryPointAccountStatus,
                                  DriverAccountStatus, OnboardingStatus, UserRole)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -235,6 +238,65 @@ async def get_current_courier(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return courier
+
+
+async def get_current_delivery_point_account_basic(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DeliveryPointAccount:
+    """Basic dependency for delivery point app endpoints."""
+    point_id_str = get_delivery_point_id_from_token(token)
+    try:
+        point_uuid = uuid.UUID(point_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    result = await db.execute(select(DeliveryPointAccount).where(DeliveryPointAccount.id == point_uuid))
+    account = result.scalar_one_or_none()
+    if account is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Delivery point account not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if account.status == DeliveryPointAccountStatus.BLOCKED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is blocked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return account
+
+
+async def get_current_delivery_point_account(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DeliveryPointAccount:
+    """Strict dependency for delivery point delivery endpoints."""
+    account = await get_current_delivery_point_account_basic(token, db)
+    if account.status != DeliveryPointAccountStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is not active",
+        )
+
+    linked_points_count = await db.scalar(
+        select(func.count())
+        .select_from(DeliveryPointAccountPoint)
+        .where(DeliveryPointAccountPoint.account_id == account.id)
+    )
+    if (linked_points_count or 0) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No delivery points assigned to this account",
+        )
+
+    return account
 
 
 async def get_current_courier_from_query(

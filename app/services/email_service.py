@@ -315,6 +315,77 @@ class EmailService:
             EmailService._log_email(email_content)
 
     @staticmethod
+    def send_trial_delivery_lead(name: str, phone: str, email: str | None = None) -> None:
+        """
+        Send trial delivery request notification to configured recipient.
+
+        Args:
+            name: Contact name
+            phone: Contact phone
+            email: Contact email (optional)
+        """
+        recipient = (settings.TRIAL_DELIVERY_LEAD_EMAIL or "").strip() or "gollum80@gmail.com"
+        subject = "Новая заявка на пробную доставку - Bananay"
+        submitted_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        safe_email = email or "Не указана"
+
+        text_body = f"""
+        Поступила новая заявка на пробную доставку.
+
+        Имя: {name}
+        Телефон: {phone}
+        Почта: {safe_email}
+        Дата: {submitted_at}
+        """
+
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .card {{ border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }}
+                .label {{ color: #64748b; font-size: 13px; margin-top: 12px; }}
+                .value {{ font-size: 16px; font-weight: 600; color: #0f172a; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>Новая заявка на пробную доставку</h2>
+                <div class="card">
+                    <div class="label">Имя</div>
+                    <div class="value">{name}</div>
+                    <div class="label">Телефон</div>
+                    <div class="value">{phone}</div>
+                    <div class="label">Почта</div>
+                    <div class="value">{safe_email}</div>
+                    <div class="label">Дата</div>
+                    <div class="value">{submitted_at}</div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        logger.info(f"Sending trial delivery lead email to: {recipient}")
+
+        if settings.USE_REAL_EMAIL:
+            EmailService._send_real_email(recipient, subject, html_body, text_body)
+        else:
+            email_content = f"""[{submitted_at}]
+                            TO: {recipient}
+                            SUBJECT: {subject}
+
+                            BODY:
+                            {text_body}
+                            {'=' * 80}
+
+                        """
+            EmailService._log_email(email_content)
+
+    @staticmethod
     def _log_email(content: str) -> None:
         """
         Log email content to file.
