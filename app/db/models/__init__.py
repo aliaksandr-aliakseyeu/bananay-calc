@@ -12,6 +12,9 @@ from app.db.models.delivery_order import (DeliveryOrder, DeliveryOrderItem,
 from app.db.models.delivery_point import DeliveryPoint, delivery_point_tags
 from app.db.models.delivery_point_suggestion import (
     DeliveryPointSuggestion, delivery_point_suggestion_tags)
+from app.db.models.delivery_point_account import DeliveryPointAccount
+from app.db.models.delivery_point_account_point import DeliveryPointAccountPoint
+from app.db.models.delivery_point_otp_code import DeliveryPointOtpCode
 from app.db.models.delivery_task import (DeliveryOrderItemDCAllocation,
                                          DeliveryOrderItemDCStatus,
                                          DriverDeliveryTask,
@@ -34,6 +37,7 @@ from app.db.models.enums import (DailyCheckInPhotoKind, DailyCheckInStatus,
                                  DcAccountStatus, DcOtpStatus, DriverOtpStatus,
                                  CourierAccountStatus, CourierApplicationStatus,
                                  CourierOtpStatus, CourierTaskStatus,
+                                 DeliveryPointAccountStatus, DeliveryPointOtpStatus,
                                  MediaFileOwnerType, OnboardingStatus, RegionType,
                                  SettlementType, TutorialStatus,
                                  TutorialType, UserRole)
@@ -115,6 +119,8 @@ __all__ = [
     "CourierApplicationStatus",
     "CourierOtpStatus",
     "CourierTaskStatus",
+    "DeliveryPointAccountStatus",
+    "DeliveryPointOtpStatus",
     "DeliveryList",
     "DeliveryListItem",
     "DeliveryTemplate",
@@ -135,4 +141,7 @@ __all__ = [
     "DriverTaskStatus",
     "DriverTaskDCStatus",
     "ItemDCStatus",
+    "DeliveryPointAccount",
+    "DeliveryPointAccountPoint",
+    "DeliveryPointOtpCode",
 ]

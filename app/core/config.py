@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     SMTP_USE_TLS: bool = True
 
     USE_REAL_EMAIL: bool = False
+    TRIAL_DELIVERY_LEAD_EMAIL: str = "gollum80@gmail.com"
 
     TELEGRAM_BOT_TOKEN: str | None = None
     DRIVER_OTP_UNIVERSAL_CODE: str = "0320"

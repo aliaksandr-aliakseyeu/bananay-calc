@@ -211,3 +211,25 @@ class CourierVerifyOtpResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     is_new_user: bool = False
+
+
+class DeliveryPointRequestOtp(BaseModel):
+    """Request OTP for delivery point app login."""
+
+    phone_e164: str = Field(..., min_length=10, max_length=20)
+
+
+class DeliveryPointVerifyOtp(BaseModel):
+    """Verify OTP and get delivery point account tokens."""
+
+    phone_e164: str = Field(..., min_length=10, max_length=20)
+    code: str = Field(..., min_length=4, max_length=10)
+
+
+class DeliveryPointVerifyOtpResponse(BaseModel):
+    """Response after delivery point OTP verification."""
+
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    is_new_user: bool = False
