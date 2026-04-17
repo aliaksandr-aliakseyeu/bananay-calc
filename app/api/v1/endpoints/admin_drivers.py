@@ -12,6 +12,7 @@ from sqlalchemy.orm import joinedload
 from app.db.base import get_db
 from app.db.models import User
 from app.db.models.driver_account import DriverAccount
+from app.db.models.driver_vehicle import DriverVehicle
 from app.db.models.enums import (
     DriverAccountStatus,
     DriverApplicationStatus,
@@ -241,7 +242,7 @@ async def get_driver_detail(
     result = await db.execute(
         select(DriverAccount)
         .options(
-            joinedload(DriverAccount.vehicles),
+            joinedload(DriverAccount.vehicles).selectinload(DriverVehicle.capabilities),
             joinedload(DriverAccount.application),
         )
         .where(DriverAccount.id == driver_id)
@@ -271,7 +272,13 @@ async def get_driver_detail(
         vehicles_data.append({
             "id": str(vehicle.id),
             "plate_number": vehicle.plate_number,
+            "plate_number_normalized": vehicle.plate_number_normalized,
+            "brand": vehicle.brand,
             "model": vehicle.model,
+            "vin": vehicle.vin,
+            "year": vehicle.year,
+            "body_type_code": vehicle.body_type_code,
+            "status": vehicle.status,
             "capacity_kg": vehicle.capacity_kg,
             "capacity_m3": float(vehicle.capacity_m3) if vehicle.capacity_m3 else None,
             "body_type": vehicle.body_type,

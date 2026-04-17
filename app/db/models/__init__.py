@@ -34,13 +34,14 @@ from app.db.models.driver_telegram_binding import DriverTelegramBinding
 from app.db.models.driver_vehicle import DriverVehicle
 from app.db.models.enums import (DailyCheckInPhotoKind, DailyCheckInStatus,
                                  DriverAccountStatus, DriverApplicationStatus,
+                                 DriverVehicleStatus, VehicleVerificationStatus,
                                  DcAccountStatus, DcOtpStatus, DriverOtpStatus,
                                  CourierAccountStatus, CourierApplicationStatus,
                                  CourierOtpStatus, CourierTaskStatus,
                                  DeliveryPointAccountStatus, DeliveryPointOtpStatus,
                                  MediaFileOwnerType, OnboardingStatus, RegionType,
                                  SettlementType, TutorialStatus,
-                                 TutorialType, UserRole)
+                                 TutorialType, UserRole, VehicleBodyType)
 from app.db.models.media_file import MediaFile
 from app.db.models.producer_profile import ProducerProfile
 from app.db.models.producer_sku import ProducerSKU
@@ -60,6 +61,8 @@ from app.db.models.sector import Sector
 from app.db.models.settlement import Settlement
 from app.db.models.temperature_mode import TemperatureMode
 from app.db.models.user import User
+from app.db.models.vehicle_capability import VehicleCapability
+from app.db.models.vehicle_compliance import VehicleCompliance
 
 __all__ = [
     "Country",
@@ -82,6 +85,8 @@ __all__ = [
     "TutorialStatus",
     "DriverAccountStatus",
     "DriverApplicationStatus",
+    "DriverVehicleStatus",
+    "VehicleVerificationStatus",
     "DriverOtpStatus",
     "DcAccountStatus",
     "DcOtpStatus",
@@ -100,6 +105,8 @@ __all__ = [
     "TemperatureMode",
     "DriverAccount",
     "DriverVehicle",
+    "VehicleCapability",
+    "VehicleCompliance",
     "DriverApplication",
     "DriverTelegramBinding",
     "MediaFile",
@@ -119,6 +126,7 @@ __all__ = [
     "CourierApplicationStatus",
     "CourierOtpStatus",
     "CourierTaskStatus",
+    "VehicleBodyType",
     "DeliveryPointAccountStatus",
     "DeliveryPointOtpStatus",
     "DeliveryList",
