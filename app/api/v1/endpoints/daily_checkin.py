@@ -32,6 +32,7 @@ from app.schemas.daily_checkin import (
 )
 from app.services.azure_blob_service import upload_blob
 from app.services.sse_manager import driver_sse_manager
+from app.utils.vehicle import ACTIVE_DRIVER_VEHICLE_STATUSES
 
 router = APIRouter(prefix="/driver/daily-checkin", tags=["Driver - Daily Check-in"])
 
@@ -169,7 +170,7 @@ async def start_checkin(
         select(DriverVehicle).where(
             DriverVehicle.id == vehicle_id,
             DriverVehicle.driver_id == driver.id,
-            DriverVehicle.is_active.is_(True),
+            DriverVehicle.status.in_(ACTIVE_DRIVER_VEHICLE_STATUSES),
         )
     )
     vehicle = result.scalar_one_or_none()

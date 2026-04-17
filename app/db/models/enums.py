@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, IntEnum
 
 
 class RegionType(str, Enum):
@@ -68,6 +68,35 @@ class DriverApplicationStatus(str, Enum):
     PENDING_REVIEW = "pending_review"
     APPROVED = "approved"
     REJECTED = "rejected"
+
+
+class DriverVehicleStatus(IntEnum):
+    """Internal status of a driver vehicle record."""
+    ACTIVE = 1
+    DRAFT = 2
+    PENDING_VERIFICATION = 3
+    SUSPENDED = 4
+    ARCHIVED = 5
+
+
+class VehicleVerificationStatus(IntEnum):
+    """Admin / driver flow for vehicle document verification (vehicle_compliance.verification_status)."""
+    NONE = 0
+    PENDING = 1
+    APPROVED = 2
+    REJECTED = 3
+
+
+class VehicleBodyType(IntEnum):
+    """Normalized vehicle body type code."""
+    UNKNOWN = 0
+    VAN = 1
+    REFRIGERATED = 2
+    TENT = 3
+    BOX = 4
+    FLATBED = 5
+    ISOTHERMAL = 6
+    OTHER = 99
 
 
 class MediaFileOwnerType(str, Enum):

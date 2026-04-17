@@ -1,194 +1,142 @@
-# 🍌 Bananay Delivery Calculator
+# Bananay Calc
 
-Delivery cost calculator from distribution centers to delivery points.
+Logistics backend and delivery calculator API for the Bananay ecosystem.
 
-📚 **[Full project documentation →](PROJECT_OVERVIEW.md)**
+Бэкенд логистической платформы и API-калькулятор доставки для экосистемы Bananay.
 
-## Key Features
+## Overview / Обзор
 
-- 🗺 **Geospatial search** for delivery points (PostGIS)
-- 🧮 **Cost calculator** with real road distances
-- 📊 **Regional pricing management**
-- 🔍 **Autocomplete and fuzzy search** for delivery points
-- 🌐 **RESTful API** with automatic documentation
+`bananay_calc` is the main FastAPI backend used by the Bananay web applications. It provides delivery cost calculation, geospatial search, operational APIs for multiple product roles, and project documentation endpoints.
 
-## Technologies
+`bananay_calc` это основной FastAPI-бэкенд для веб-приложений Bananay. Он обслуживает расчёт стоимости доставки, геопоиск, рабочие API для разных ролей продукта и встроенные endpoints с документацией.
 
-- **FastAPI** - web framework
-- **SQLAlchemy 2.0** - ORM with async support
-- **GeoAlchemy2** - extension for PostGIS integration
-- **PostgreSQL + PostGIS** - database with geodata
-- **Poetry** - dependency management
-- **Alembic** - database migrations
-- **OpenRouteService API** - real route calculation
-- **Yandex Geocoder API** - address geocoding
+## Stack / Стек
 
-## Installation
+- FastAPI
+- SQLAlchemy 2 async
+- PostgreSQL + PostGIS
+- GeoAlchemy2
+- Alembic
+- Poetry
+- OpenRouteService / Yandex routing integration
+- Python 3.11+
 
-### 1. Install dependencies
+## What This Repo Contains / Что есть в репозитории
 
-```bash
-poetry install
-```
+- Delivery calculator and distance logic
+- Delivery point, distribution center and settlement APIs
+- Auth and role-oriented API surface for producers, drivers, couriers, hubs and delivery points
+- Health and diagnostics endpoints
+- Import/seed scripts and Alembic migrations
 
-### 2. Start PostgreSQL with PostGIS
+## Prerequisites / Требования
 
-```bash
-docker-compose up -d
-```
+- Python `3.11+`
+- Poetry
+- PostgreSQL with PostGIS
+- Docker Desktop or a local PostgreSQL/PostGIS installation
 
-### 3. Create `.env` file
+## Environment Variables / Переменные окружения
 
-Required variables:
+The repository does not currently contain a committed `.env.example`, so create `.env` manually.
+
+В репозитории сейчас нет закоммиченного `.env.example`, поэтому `.env` нужно создать вручную.
 
 ```env
-# Database (used by app/core/config.py)
+# Database
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_USER=postgres
 DATABASE_PASSWORD=postgres
 DATABASE_NAME=bananay_calc
 
-# Routing provider: 'openroute' (default), 'yandex', or 'fallback'
+# Routing provider: openroute | yandex | fallback
 ROUTING_PROVIDER=openroute
 DISTANCE_FALLBACK_COEFFICIENT=1.4
 
-# API keys (optional)
-OPENROUTESERVICE_API_KEY=your_key_here
-YANDEX_API_KEY=your_key_here
+# Optional provider keys
+OPENROUTESERVICE_API_KEY=
+YANDEX_API_KEY=
 ```
 
-> Note: The repository currently does not include a `.env.example` file — create `.env` manually.
+## Local Development / Локальный запуск
 
-### 4. Apply migrations
+### 1. Install dependencies / Установить зависимости
+
+```bash
+poetry install
+```
+
+### 2. Start PostgreSQL with PostGIS / Запустить PostgreSQL с PostGIS
+
+```bash
+docker-compose up -d
+```
+
+### 3. Apply migrations / Применить миграции
 
 ```bash
 poetry run alembic upgrade head
 ```
 
-### 5. Import data
+### 4. Import base data / Импортировать базовые данные
 
-**Execution order is important!**
+Run the scripts in this order:
+
+Запускайте скрипты в таком порядке:
 
 ```bash
-# 1. Distribution centers (with geocoding)
 poetry run python scripts/seed_distribution_centers.py
-
-# 2. Delivery sectors from GeoJSON
 poetry run python scripts/import_sectors.py
-
-# 3. Delivery points from Excel
 poetry run python scripts/import_delivery_points.py
 ```
 
-### 6. Start API server
+### 5. Start the API / Запустить API
 
 ```bash
 poetry run uvicorn app.main:app --reload
 ```
 
-API will be available at: **http://localhost:8000**
+Default local URL: `http://localhost:8000`
 
-- 📖 **Swagger UI:** http://localhost:8000/docs
-- 📘 **ReDoc:** http://localhost:8000/redoc
-- 📚 **Project documentation:** http://localhost:8000/docs/overview
-- ❤️ **Health:** http://localhost:8000/health
-- 🗄️ **DB pool status:** http://localhost:8000/health/db-pool
+## Main Endpoints / Основные endpoints
 
-## Project Structure
+- `/docs` - Swagger UI
+- `/redoc` - ReDoc
+- `/docs/overview` - project overview page rendered from `PROJECT_OVERVIEW.md`
+- `/health` - basic health check
+- `/health/db-pool` - DB pool diagnostics
+- `/api/*` - main application API
 
-```
-bananay_calc/
-├── app/
-│   ├── api/v1/        # API endpoints
-│   │   └── endpoints/ # Routes by modules
-│   ├── core/          # Configuration
-│   ├── db/            # Database
-│   │   └── models/    # SQLAlchemy models
-│   ├── schemas/       # Pydantic schemas
-│   ├── services/      # Business logic (calculator, distances)
-│   ├── utils/         # Utilities
-│   └── main.py        # FastAPI application
-├── scripts/           # Data import scripts
-├── alembic/           # Migrations
-├── tests/             # Tests
-├── PROJECT_OVERVIEW.md  # 📚 Full documentation
-└── docker-compose.yml # PostgreSQL + PostGIS
-```
+## Main Areas / Основные зоны
 
-## 🚀 API Usage Examples
+- `app/api/v1/` - versioned API routes
+- `app/services/` - business logic and integrations
+- `app/db/` - database setup and models
+- `alembic/` - migrations
+- `scripts/` - seed/import utilities
+- `tests/` - automated tests
 
-### Calculate delivery cost
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/calculator/by-points" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "region_id": 1,
-    "supplier_location": {
-      "latitude": 43.585472,
-      "longitude": 39.723098
-    },
-    "product": {
-      "length_cm": 30,
-      "width_cm": 20,
-      "height_cm": 10,
-      "weight_kg": 2.5
-    },
-    "delivery_point_ids": [1, 2, 3]
-  }'
-```
-
-### Search delivery points
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/delivery-points/search" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "region_id": 1,
-    "search": "Красная",
-    "limit": 10
-  }'
-```
-
-### Get distribution centers for a region
-
-```bash
-curl "http://localhost:8000/api/v1/distribution-centers?region_id=1"
-```
-
-### Get settlements for a region
-
-```bash
-curl "http://localhost:8000/api/v1/settlements?region_id=1"
-```
-
-More details: **http://localhost:8000/docs**
-
-## Development
-
-Activate virtual environment:
-
-```bash
-poetry shell
-```
-
-Run tests:
+## Testing / Тесты
 
 ```bash
 poetry run pytest
 ```
 
-## Docker quickstart
+## Docker Notes / Docker и деплой
 
-If you prefer running everything via Docker Compose, see: **[API_QUICKSTART.md](API_QUICKSTART.md)**.
+- `docker-compose.yml` can be used to start PostgreSQL/PostGIS locally.
+- The API itself is started with `uvicorn` during development.
+- For additional operational notes see [API_QUICKSTART.md](API_QUICKSTART.md).
 
-## 📚 Documentation
+## Related Documentation / Связанная документация
 
-- [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) - full project documentation
-- [API_QUICKSTART.md](API_QUICKSTART.md) - Docker-based quickstart and useful commands
-- [CALCULATOR_API.md](CALCULATOR_API.md) - calculator endpoint details
+- [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)
+- [API_QUICKSTART.md](API_QUICKSTART.md)
+- [CALCULATOR_API.md](CALCULATOR_API.md)
 
----
+## Notes / Примечания
 
-_For complete project information see [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)_
+- This backend is broader than just the delivery calculator: it also serves APIs for multiple Bananay role apps.
+- Static assets from `public/` are mounted at `/public` when that directory exists.
+- The FastAPI app exposes automatic API docs and a project overview page out of the box.

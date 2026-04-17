@@ -2,8 +2,8 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (admin_courier_daily_checkin, admin_couriers, admin_daily_checkin,
-                                  admin_dc_accounts, admin_delivery_point_accounts, admin_drivers,
-                                  admin_producers, auth, calculator, countries,
+                                  admin_dc_accounts, admin_delivery_point_accounts, admin_driver_vehicles,
+                                  admin_drivers, admin_producers, auth, calculator, countries,
                                   courier, courier_auth, courier_daily_checkin,
                                   daily_checkin, delivery_lists,
                                   delivery_point_app, delivery_point_auth,
@@ -31,6 +31,7 @@ api_router.include_router(producer_sku.router)
 api_router.include_router(tutorials.router)
 api_router.include_router(admin_producers.router)
 api_router.include_router(admin_drivers.router)
+api_router.include_router(admin_driver_vehicles.router)
 api_router.include_router(admin_dc_accounts.router)
 api_router.include_router(admin_delivery_point_accounts.router)
 api_router.include_router(admin_daily_checkin.router)
