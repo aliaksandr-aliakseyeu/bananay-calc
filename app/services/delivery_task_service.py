@@ -27,6 +27,7 @@ from app.db.models import (
     DeliveryPoint,
     DistributionCenter,
     Sector,
+    Settlement,
 )
 from app.db.models.delivery_order import (
     DeliveryOrderStatusHistory,
@@ -155,24 +156,37 @@ class DeliveryTaskService:
 
     async def _load_all_active_dcs(
         self,
+        region_id: int | None = None,
     ) -> list[DistributionCenter]:
-        """Load all active DCs once (avoid N+1 in _find_nearest_dc)."""
-        result = await self.db.execute(
-            select(DistributionCenter).where(
-                DistributionCenter.is_active == True  # noqa: E712
-            )
+        """Load active DCs, optionally filtered by region."""
+        query = select(DistributionCenter).where(
+            DistributionCenter.is_active == True  # noqa: E712
         )
+        if region_id is not None:
+            query = query.where(DistributionCenter.region_id == region_id)
+        result = await self.db.execute(query)
         return list(result.scalars().unique().all())
+
+    async def _get_point_region_id(self, point: DeliveryPoint) -> int | None:
+        if not point.settlement_id:
+            return None
+        result = await self.db.execute(
+            select(Settlement.region_id).where(Settlement.id == point.settlement_id)
+        )
+        return result.scalar_one_or_none()
 
     async def _find_nearest_dc(
         self,
         point_lat: float,
         point_lon: float,
         dcs: list[DistributionCenter] | None = None,
+        region_id: int | None = None,
     ) -> DistributionCenter | None:
         """Find nearest active DC by straight-line distance (haversine)."""
         if dcs is None:
-            dcs = await self._load_all_active_dcs()
+            dcs = await self._load_all_active_dcs(region_id)
+        elif region_id is not None:
+            dcs = [dc for dc in dcs if dc.region_id == region_id]
         if not dcs:
             return None
 
@@ -210,7 +224,15 @@ class DeliveryTaskService:
                 return dc
 
         point_lat, point_lon = self.distance_service.extract_coordinates(point.location)
-        return await self._find_nearest_dc(point_lat, point_lon, dcs=all_dcs)
+        region_id = await self._get_point_region_id(point)
+        region_dcs = all_dcs
+        if region_dcs is not None and region_id is not None:
+            region_dcs = [dc for dc in region_dcs if dc.region_id == region_id]
+        elif region_dcs is None:
+            region_dcs = await self._load_all_active_dcs(region_id)
+        return await self._find_nearest_dc(
+            point_lat, point_lon, dcs=region_dcs, region_id=region_id
+        )
 
     async def create_dc_allocations_for_order(
         self, order: DeliveryOrder

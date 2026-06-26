@@ -1,7 +1,7 @@
 """Product category endpoints."""
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,14 +13,24 @@ from app.schemas.product_category import (
     ProductCategoryResponse,
     ProductCategoryUpdate,
 )
+from app.services.reference_data_serializers import to_product_category_response
 from app.utils.validation import check_unique_fields
 
 router = APIRouter(prefix="/product-categories", tags=["Product Categories"])
+
+SupportedLang = Annotated[
+    str,
+    Query(
+        description="Response language (en, ka, ru). Defaults to English.",
+        pattern="^(en|ka|ru)$",
+    ),
+]
 
 
 @router.get("", response_model=list[ProductCategoryResponse])
 async def get_product_categories(
     db: Annotated[AsyncSession, Depends(get_db)],
+    lang: SupportedLang = "en",
     is_active: bool | None = None,
 ) -> list[ProductCategoryResponse]:
     """Get all product categories."""
@@ -28,13 +38,15 @@ async def get_product_categories(
     if is_active is not None:
         query = query.where(ProductCategory.is_active == is_active)
     result = await db.execute(query)
-    return result.scalars().all()
+    categories = result.scalars().all()
+    return [to_product_category_response(category, lang) for category in categories]
 
 
 @router.get("/{product_category_id}", response_model=ProductCategoryResponse)
 async def get_product_category(
     product_category_id: int,
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
+    lang: SupportedLang = "en",
 ) -> ProductCategoryResponse:
     """Get a product category by ID."""
     result = await db.execute(
@@ -43,7 +55,7 @@ async def get_product_category(
     db_product_category = result.scalar_one_or_none()
     if not db_product_category:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product category not found")
-    return db_product_category
+    return to_product_category_response(db_product_category, lang)
 
 
 @router.post("", response_model=ProductCategoryResponse, status_code=status.HTTP_201_CREATED)
@@ -51,22 +63,20 @@ async def create_product_category(
     product_category: ProductCategoryCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_admin: Annotated[User, Depends(get_current_admin)],
+    lang: SupportedLang = "en",
 ) -> ProductCategoryResponse:
     """Create a new product category."""
     await check_unique_fields(
         db=db,
         model=ProductCategory,
-        fields={
-            "name": product_category.name,
-            "slug": product_category.slug
-        }
+        fields={"slug": product_category.slug},
     )
 
     db_product_category = ProductCategory(**product_category.model_dump())
     db.add(db_product_category)
     await db.commit()
     await db.refresh(db_product_category)
-    return db_product_category
+    return to_product_category_response(db_product_category, lang)
 
 
 @router.patch("/{product_category_id}", response_model=ProductCategoryResponse, status_code=status.HTTP_200_OK)
@@ -75,6 +85,7 @@ async def update_product_category(
     product_category: ProductCategoryUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_admin: Annotated[User, Depends(get_current_admin)],
+    lang: SupportedLang = "en",
 ) -> ProductCategoryResponse:
     """Update a product category."""
     result = await db.execute(
@@ -87,11 +98,8 @@ async def update_product_category(
     await check_unique_fields(
         db=db,
         model=ProductCategory,
-        fields={
-            "name": product_category.name,
-            "slug": product_category.slug
-        },
-        exclude_id=product_category_id
+        fields={"slug": product_category.slug},
+        exclude_id=product_category_id,
     )
 
     update_data = product_category.model_dump(exclude_unset=True)
@@ -99,7 +107,7 @@ async def update_product_category(
         setattr(db_product_category, field, value)
     await db.commit()
     await db.refresh(db_product_category)
-    return db_product_category
+    return to_product_category_response(db_product_category, lang)
 
 
 @router.delete("/{product_category_id}", status_code=status.HTTP_204_NO_CONTENT)

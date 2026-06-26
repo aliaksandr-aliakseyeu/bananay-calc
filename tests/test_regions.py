@@ -13,7 +13,12 @@ from app.db.models.enums import RegionType
 @pytest.fixture
 def fake_country():
     """Create fake country for testing."""
-    return Country(id=1, name="Россия", code="RU")
+    return Country(
+        id=1,
+        name="Russia",
+        code="RU",
+        name_i18n={"ru": "Россия", "en": "Russia", "ka": "რუსეთი"},
+    )
 
 
 @pytest.fixture
@@ -21,9 +26,10 @@ def fake_region(fake_country):
     """Create fake region for testing."""
     region = Region(
         id=1,
-        name="Краснодарский край",
+        name="Krasnodar Krai",
         type=RegionType.KRAI,
         country_id=1,
+        name_i18n={"ru": "Краснодарский край", "en": "Krasnodar Krai", "ka": "კრასნოდარის რკალი"},
     )
     region.country = fake_country
     region.distribution_centers = []
@@ -36,17 +42,19 @@ def fake_regions(fake_country):
     """Create list of fake regions for testing."""
     region1 = Region(
         id=1,
-        name="Краснодарский край",
+        name="Krasnodar Krai",
         type=RegionType.KRAI,
         country_id=1,
+        name_i18n={"ru": "Краснодарский край", "en": "Krasnodar Krai", "ka": "კრასნოდარის რკალი"},
     )
     region1.country = fake_country
 
     region2 = Region(
         id=2,
-        name="Московская область",
+        name="Moscow Oblast",
         type=RegionType.OBLAST,
         country_id=1,
+        name_i18n={"ru": "Московская область", "en": "Moscow Oblast", "ka": "მოსკოვის ობლასტი"},
     )
     region2.country = fake_country
 
@@ -125,10 +133,10 @@ async def test_get_regions_returns_list(mock_db_session, fake_regions):
     result = await get_regions(db=mock_db_session)
 
     assert len(result) == 2
-    assert result[0].name == "Краснодарский край"
+    assert result[0].name == "Krasnodar Krai"
     assert result[0].type == RegionType.KRAI
-    assert result[0].country.name == "Россия"
-    assert result[1].name == "Московская область"
+    assert result[0].country.name == "Russia"
+    assert result[1].name == "Moscow Oblast"
     assert mock_db_session.execute.called
 
 
@@ -166,17 +174,17 @@ async def test_get_region_by_id_success(
 
     result = await get_region(region_id=1, db=mock_db_session)
 
-    assert result["id"] == 1
-    assert result["name"] == "Краснодарский край"
-    assert result["type"] == "край"
-    assert result["country"].name == "Россия"
-    assert len(result["distribution_centers"]) == 2
-    assert result["distribution_centers"][0].name == "РЦ Адлер"
-    assert result["pricing"] is not None
-    assert result["pricing"].driver_hourly_rate == Decimal("500.00")
-    assert result["stats"].distribution_centers_count == 2
-    assert result["stats"].sectors_count == 45
-    assert result["stats"].settlements_count == 123
+    assert result.id == 1
+    assert result.name == "Krasnodar Krai"
+    assert result.type == "край"
+    assert result.country.name == "Russia"
+    assert len(result.distribution_centers) == 2
+    assert result.distribution_centers[0].name == "РЦ Адлер"
+    assert result.pricing is not None
+    assert result.pricing.driver_hourly_rate == Decimal("500.00")
+    assert result.stats.distribution_centers_count == 2
+    assert result.stats.sectors_count == 45
+    assert result.stats.settlements_count == 123
     assert mock_db_session.execute.call_count == 2
 
 
@@ -198,8 +206,8 @@ async def test_get_region_without_pricing(mock_db_session, fake_region):
 
     result = await get_region(region_id=1, db=mock_db_session)
 
-    assert result["pricing"] is None
-    assert result["stats"].distribution_centers_count == 0
+    assert result.pricing is None
+    assert result.stats.distribution_centers_count == 0
 
 
 @pytest.mark.asyncio

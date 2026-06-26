@@ -2,7 +2,7 @@
 import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from geoalchemy2.functions import (
     ST_AsGeoJSON,
     ST_GeomFromGeoJSON,
@@ -25,14 +25,47 @@ from app.schemas.delivery_point import (
     DeliveryPointUpdate,
 )
 from app.utils import normalize_name
+from app.utils.schedule_i18n import normalize_schedule_i18n, translate_schedule_to_i18n
+from app.services.delivery_point_serializers import serialize_schedule
 
 router = APIRouter(prefix="/delivery-points", tags=["Delivery Points"])
+
+SupportedLang = Annotated[
+    str,
+    Query(
+        description="Response language for schedule (en, ka, ru). Defaults to English.",
+        pattern="^(en|ka|ru)$",
+    ),
+]
+
+
+def _apply_schedule_fields(
+    payload: dict,
+    schedule_i18n: dict[str, str] | None,
+    legacy_schedule: str | None,
+    lang: str,
+) -> None:
+    schedule, i18n = serialize_schedule(schedule_i18n, legacy_schedule, lang)
+    payload["schedule"] = schedule
+    payload["schedule_i18n"] = i18n
+
+
+def _resolve_schedule_i18n_for_write(
+    schedule_i18n: dict[str, str] | None,
+    legacy_schedule: str | None,
+) -> dict[str, str] | None:
+    if schedule_i18n is not None:
+        return normalize_schedule_i18n(schedule_i18n)
+    if legacy_schedule:
+        return translate_schedule_to_i18n(legacy_schedule)
+    return None
 
 
 @router.post("/search", response_model=DeliveryPointSearchResponse)
 async def search_delivery_points(
     filters: DeliveryPointSearchRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    lang: SupportedLang = "en",
 ) -> dict:
     """
     Search delivery points with filters.
@@ -75,6 +108,7 @@ async def search_delivery_points(
         DeliveryPoint.mobile,
         DeliveryPoint.email,
         DeliveryPoint.schedule,
+        DeliveryPoint.schedule_i18n,
         DeliveryPoint.is_active,
     ).join(
         Settlement, DeliveryPoint.settlement_id == Settlement.id
@@ -174,7 +208,7 @@ async def search_delivery_points(
     items = []
     for row in rows:
         location_data = json.loads(row.location_geojson)
-        items.append({
+        item = {
             "id": row.id,
             "name": row.name,
             "type": row.type,
@@ -186,9 +220,10 @@ async def search_delivery_points(
             "phone": row.phone,
             "mobile": row.mobile,
             "email": row.email,
-            "schedule": row.schedule,
             "is_active": row.is_active,
-        })
+        }
+        _apply_schedule_fields(item, row.schedule_i18n, row.schedule, lang)
+        items.append(item)
 
     return {
         "total": len(items),
@@ -200,6 +235,7 @@ async def search_delivery_points(
 async def get_delivery_point(
     delivery_point_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
+    lang: SupportedLang = "en",
 ) -> dict:
     """Get a single delivery point by ID."""
     query = select(
@@ -219,6 +255,7 @@ async def get_delivery_point(
         DeliveryPoint.mobile,
         DeliveryPoint.email,
         DeliveryPoint.schedule,
+        DeliveryPoint.schedule_i18n,
         DeliveryPoint.is_active,
     ).where(DeliveryPoint.id == delivery_point_id)
 
@@ -239,7 +276,7 @@ async def get_delivery_point(
 
     location_data = json.loads(row.location_geojson)
 
-    return {
+    payload = {
         "id": row.id,
         "name": row.name,
         "type": row.type,
@@ -255,10 +292,11 @@ async def get_delivery_point(
         "phone": row.phone,
         "mobile": row.mobile,
         "email": row.email,
-        "schedule": row.schedule,
         "is_active": row.is_active,
         "tag_ids": tag_ids,
     }
+    _apply_schedule_fields(payload, row.schedule_i18n, row.schedule, lang)
+    return payload
 
 
 @router.post("", response_model=DeliveryPointDetailResponse, status_code=status.HTTP_201_CREATED)
@@ -287,6 +325,7 @@ async def create_delivery_point(
             )
 
     location_geojson = json.dumps(data.location.model_dump())
+    schedule_i18n = _resolve_schedule_i18n_for_write(data.schedule_i18n, data.schedule)
 
     delivery_point = DeliveryPoint(
         settlement_id=data.settlement_id,
@@ -303,7 +342,7 @@ async def create_delivery_point(
         phone=data.phone,
         mobile=data.mobile,
         email=data.email,
-        schedule=data.schedule,
+        schedule_i18n=schedule_i18n,
         is_active=data.is_active,
     )
 
@@ -361,7 +400,16 @@ async def update_delivery_point(
                 detail="One or more tag IDs are invalid"
             )
 
-    update_data = data.model_dump(exclude_unset=True, exclude={'tag_ids', 'location'})
+    update_data = data.model_dump(
+        exclude_unset=True,
+        exclude={'tag_ids', 'location', 'schedule', 'schedule_i18n'},
+    )
+
+    if data.schedule_i18n is not None or data.schedule is not None:
+        delivery_point.schedule_i18n = _resolve_schedule_i18n_for_write(
+            data.schedule_i18n,
+            data.schedule,
+        )
 
     if data.location is not None:
         location_geojson = json.dumps(data.location.model_dump())

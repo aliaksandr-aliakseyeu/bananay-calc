@@ -31,9 +31,9 @@ async def test_get_countries_returns_list(mock_db_session, fake_countries):
     result = await get_countries(db=mock_db_session)
 
     assert len(result) == 2
-    assert result[0].name == "Беларусь"
+    assert result[0].name == "Belarus"
     assert result[0].code == "BY"
-    assert result[1].name == "Россия"
+    assert result[1].name == "Russia"
     assert result[1].code == "RU"
     assert mock_db_session.execute.called
 
@@ -48,7 +48,7 @@ async def test_get_country_by_id_success(mock_db_session, fake_country):
     result = await get_country(country_id=1, db=mock_db_session)
 
     assert result.id == 1
-    assert result.name == "Россия"
+    assert result.name == "Russia"
     assert result.code == "RU"
     assert mock_db_session.execute.called
 
@@ -85,7 +85,12 @@ async def test_get_countries_calls_database(mock_db_session):
 async def test_get_country_calls_database(mock_db_session):
     """Test that get_country calls database execute method."""
     mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = Country(id=1, name="Test", code="TS")
+    mock_result.scalar_one_or_none.return_value = Country(
+        id=1,
+        name="Test",
+        code="TS",
+        name_i18n={"en": "Test", "ru": "Тест"},
+    )
     mock_db_session.execute.return_value = mock_result
 
     await get_country(country_id=1, db=mock_db_session)

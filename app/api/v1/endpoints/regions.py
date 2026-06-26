@@ -24,15 +24,28 @@ from app.schemas.region import (
     RegionPricingUpdate,
     RegionStatsResponse,
 )
+from app.services.reference_data_serializers import (
+    to_region_detail_response,
+    to_region_list_response,
+)
 
 router = APIRouter(prefix="/regions", tags=["Regions"])
+
+SupportedLang = Annotated[
+    str,
+    Query(
+        description="Response language (en, ka, ru). Defaults to English.",
+        pattern="^(en|ka|ru)$",
+    ),
+]
 
 
 @router.get("", response_model=list[RegionListResponse])
 async def get_regions(
     db: Annotated[AsyncSession, Depends(get_db)],
+    lang: SupportedLang = "en",
     country_id: Annotated[int | None, Query(description="Filter by country ID")] = None,
-) -> list[Region]:
+) -> list[RegionListResponse]:
     """
     Get all regions.
 
@@ -49,14 +62,15 @@ async def get_regions(
     result = await db.execute(query)
     regions = result.unique().scalars().all()
 
-    return list(regions)
+    return [to_region_list_response(region, lang) for region in regions]
 
 
 @router.get("/{region_id}", response_model=RegionDetailResponse)
 async def get_region(
     region_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> dict:
+    lang: SupportedLang = "en",
+) -> RegionDetailResponse:
     """
     Get region by ID with full information.
 
@@ -95,15 +109,13 @@ async def get_region(
     if region.pricing:
         pricing_response = RegionPricingResponse.from_pricing_model(region.pricing)
 
-    return {
-        "id": region.id,
-        "name": region.name,
-        "type": region.type.value if region.type else None,
-        "country": region.country,
-        "distribution_centers": region.distribution_centers,
-        "pricing": pricing_response,
-        "stats": stats,
-    }
+    return to_region_detail_response(
+        region,
+        lang=lang,
+        distribution_centers=region.distribution_centers,
+        pricing_response=pricing_response,
+        stats=stats,
+    )
 
 
 @router.get("/{region_id}/pricing", response_model=RegionPricingResponse)

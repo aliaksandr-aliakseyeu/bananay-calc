@@ -11,6 +11,7 @@ from app.db.base import get_db
 from app.db.models import Sector, User
 from app.dependencies import get_current_admin
 from app.schemas.sector import SectorCreate, SectorResponse, SectorUpdate
+from app.utils.db_sequences import sync_table_id_sequence
 
 router = APIRouter(prefix="/sectors", tags=["Sectors"])
 
@@ -123,6 +124,7 @@ async def create_sector(
     )
 
     db.add(sector)
+    await sync_table_id_sequence(db, Sector.__tablename__)
     await db.flush()
     await db.commit()
 

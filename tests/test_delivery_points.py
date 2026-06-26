@@ -22,7 +22,12 @@ def fake_delivery_points_rows():
     row1.phone = "+7 (862) 123-45-67"
     row1.mobile = "+7 (999) 123-45-67"
     row1.email = "shop@example.com"
-    row1.schedule = "Пн-Вс: 08:00-22:00"
+    row1.schedule = "Mon-Sun: 08:00-22:00"
+    row1.schedule_i18n = {
+        "en": "Mon-Sun: 08:00-22:00",
+        "ka": "ორშ-კვი: 08:00-22:00",
+        "ru": "Пн-Вс: 08:00-22:00",
+    }
     row1.is_active = True
 
     row2 = MagicMock()
@@ -37,7 +42,12 @@ def fake_delivery_points_rows():
     row2.phone = "+7 (862) 987-65-43"
     row2.mobile = None
     row2.email = None
-    row2.schedule = "Пн-Пт: 09:00-20:00"
+    row2.schedule = "Mon-Fri: 09:00-20:00"
+    row2.schedule_i18n = {
+        "en": "Mon-Fri: 09:00-20:00",
+        "ka": "ორშ-პარ: 09:00-20:00",
+        "ru": "Пн-Пт: 09:00-20:00",
+    }
     row2.is_active = True
 
     return [row1, row2]
@@ -168,11 +178,13 @@ async def test_search_delivery_points_response_fields(
     assert "mobile" in point
     assert "email" in point
     assert "schedule" in point
+    assert "schedule_i18n" in point
     assert "is_active" in point
     assert point["phone"] == "+7 (862) 123-45-67"
     assert point["mobile"] == "+7 (999) 123-45-67"
     assert point["email"] == "shop@example.com"
-    assert point["schedule"] == "Пн-Вс: 08:00-22:00"
+    assert point["schedule"] == "Mon-Sun: 08:00-22:00"
+    assert point["schedule_i18n"]["en"] == "Mon-Sun: 08:00-22:00"
     assert point["is_active"] is True
 
 

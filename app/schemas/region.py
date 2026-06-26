@@ -4,6 +4,7 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.country import CountryResponse
+from app.schemas.i18n import I18nStrings
 
 
 class DistributionCenterBrief(BaseModel):
@@ -261,7 +262,10 @@ class RegionListResponse(BaseModel):
 
     id: int
     name: str
+    name_i18n: I18nStrings
     type: str | None = Field(None, description="Region type (krai, oblast, etc.)")
+    default_lat: float | None = Field(None, description="Default map center latitude")
+    default_lng: float | None = Field(None, description="Default map center longitude")
     country: CountryResponse
 
     model_config = ConfigDict(from_attributes=True)
@@ -272,7 +276,10 @@ class RegionDetailResponse(BaseModel):
 
     id: int
     name: str
+    name_i18n: I18nStrings
     type: str | None = Field(None, description="Region type (krai, oblast, etc.)")
+    default_lat: float | None = Field(None, description="Default map center latitude")
+    default_lng: float | None = Field(None, description="Default map center longitude")
     country: CountryResponse
     distribution_centers: list[DistributionCenterBrief] = Field(
         default_factory=list,
