@@ -19,6 +19,7 @@ from app.db.models import (
     DeliveryPointStatus,
     DistributionCenter,
     Sector,
+    Settlement,
 )
 from app.db.models.delivery_order import ItemPointScanPhase
 from app.services.delivery_task_service import DeliveryTaskService
@@ -112,7 +113,17 @@ class DcItemPointService:
                 return dc.id
         task_service = DeliveryTaskService(self.db)
         lat, lon = task_service.distance_service.extract_coordinates(delivery_point.location)
-        nearest = await task_service._find_nearest_dc(lat, lon)  # noqa: SLF001
+        region_id = None
+        if delivery_point.settlement_id:
+            region_result = await self.db.execute(
+                select(Settlement.region_id).where(
+                    Settlement.id == delivery_point.settlement_id
+                )
+            )
+            region_id = region_result.scalar_one_or_none()
+        nearest = await task_service._find_nearest_dc(  # noqa: SLF001
+            lat, lon, region_id=region_id
+        )
         return nearest.id if nearest else None
 
     async def _batch_resolve_point_dc_ids(
@@ -148,20 +159,35 @@ class DcItemPointService:
                 if dp_id not in dp_to_dc:
                     dp_to_dc[dp_id] = dc_id
         task_service = DeliveryTaskService(self.db)
-        all_dcs: list[DistributionCenter] | None = None
+        dcs_by_region: dict[int | None, list[DistributionCenter]] = {}
         result: dict[int, int | None] = {}
         for ip in item_points:
             dc_id = None
             if ip.delivery_point_id is not None:
                 dc_id = dp_to_dc.get(ip.delivery_point_id)
             if dc_id is None and ip.delivery_point is not None and ip.delivery_point.location is not None:
-                if all_dcs is None:
-                    all_dcs = await task_service._load_all_active_dcs()
+                region_id = None
+                if ip.delivery_point.settlement_id:
+                    region_result = await self.db.execute(
+                        select(Settlement.region_id).where(
+                            Settlement.id == ip.delivery_point.settlement_id
+                        )
+                    )
+                    region_id = region_result.scalar_one_or_none()
+                if region_id not in dcs_by_region:
+                    dcs_by_region[region_id] = await task_service._load_all_active_dcs(
+                        region_id
+                    )
                 try:
                     lat, lon = task_service.distance_service.extract_coordinates(
                         ip.delivery_point.location
                     )
-                    nearest = await task_service._find_nearest_dc(lat, lon, dcs=all_dcs)
+                    nearest = await task_service._find_nearest_dc(
+                        lat,
+                        lon,
+                        dcs=dcs_by_region[region_id],
+                        region_id=region_id,
+                    )
                     dc_id = nearest.id if nearest else None
                 except (ValueError, TypeError):
                     dc_id = None

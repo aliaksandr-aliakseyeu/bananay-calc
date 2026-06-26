@@ -20,8 +20,10 @@ from app.schemas.delivery_list import (CheckPointInListResponse,
                                        DeliveryListUpdate,
                                        DeliveryPointInRadiusResponse,
                                        TogglePointRequest, TogglePointResponse)
-from app.schemas.delivery_point import DeliveryPointResponse, GeoJSONPoint
+from app.schemas.delivery_point import GeoJSONPoint
 from app.services.delivery_list_service import DeliveryListService
+from app.services.delivery_point_serializers import \
+    build_delivery_point_response
 
 router = APIRouter(prefix="/delivery-lists", tags=["Delivery Lists"])
 
@@ -72,20 +74,9 @@ async def get_user_delivery_lists(
                         custom_name=item.custom_name,
                         notes=item.notes,
                         created_at=item.created_at,
-                        delivery_point=DeliveryPointResponse(
-                            id=item.delivery_point.id,
-                            name=item.delivery_point.name,
-                            type=item.delivery_point.type,
-                            title=item.delivery_point.title,
-                            address=item.delivery_point.address,
-                            address_comment=item.delivery_point.address_comment,
-                            landmark=item.delivery_point.landmark,
-                            location=location_geojson,
-                            phone=item.delivery_point.phone,
-                            mobile=item.delivery_point.mobile,
-                            email=item.delivery_point.email,
-                            schedule=item.delivery_point.schedule,
-                            is_active=item.delivery_point.is_active,
+                        delivery_point=build_delivery_point_response(
+                            item.delivery_point,
+                            location_geojson,
                         ),
                     )
                 )
@@ -190,23 +181,12 @@ async def get_delivery_list(
                 custom_name=item.custom_name,
                 notes=item.notes,
                 created_at=item.created_at,
-                delivery_point=DeliveryPointResponse(
-                    id=item.delivery_point.id,
-                    name=item.delivery_point.name,
-                    type=item.delivery_point.type,
-                    title=item.delivery_point.title,
-                    address=item.delivery_point.address,
-                    address_comment=item.delivery_point.address_comment,
-                    landmark=item.delivery_point.landmark,
-                    location=GeoJSONPoint(
+                delivery_point=build_delivery_point_response(
+                    item.delivery_point,
+                    GeoJSONPoint(
                         type=location_geojson["type"],
-                        coordinates=location_geojson["coordinates"]
+                        coordinates=location_geojson["coordinates"],
                     ),
-                    phone=item.delivery_point.phone,
-                    mobile=item.delivery_point.mobile,
-                    email=item.delivery_point.email,
-                    schedule=item.delivery_point.schedule,
-                    is_active=item.delivery_point.is_active,
                 ),
             )
         )
@@ -321,23 +301,12 @@ async def add_item_to_list(
         custom_name=item.custom_name,
         notes=item.notes,
         created_at=item.created_at,
-        delivery_point=DeliveryPointResponse(
-            id=item.delivery_point.id,
-            name=item.delivery_point.name,
-            type=item.delivery_point.type,
-            title=item.delivery_point.title,
-            address=item.delivery_point.address,
-            address_comment=item.delivery_point.address_comment,
-            landmark=item.delivery_point.landmark,
-            location=GeoJSONPoint(
+        delivery_point=build_delivery_point_response(
+            item.delivery_point,
+            GeoJSONPoint(
                 type=location_geojson["type"],
-                coordinates=location_geojson["coordinates"]
+                coordinates=location_geojson["coordinates"],
             ),
-            phone=item.delivery_point.phone,
-            mobile=item.delivery_point.mobile,
-            email=item.delivery_point.email,
-            schedule=item.delivery_point.schedule,
-            is_active=item.delivery_point.is_active,
         ),
     )
 
@@ -377,23 +346,12 @@ async def update_list_item(
         custom_name=updated_item.custom_name,
         notes=updated_item.notes,
         created_at=updated_item.created_at,
-        delivery_point=DeliveryPointResponse(
-            id=updated_item.delivery_point.id,
-            name=updated_item.delivery_point.name,
-            type=updated_item.delivery_point.type,
-            title=updated_item.delivery_point.title,
-            address=updated_item.delivery_point.address,
-            address_comment=updated_item.delivery_point.address_comment,
-            landmark=updated_item.delivery_point.landmark,
-            location=GeoJSONPoint(
+        delivery_point=build_delivery_point_response(
+            updated_item.delivery_point,
+            GeoJSONPoint(
                 type=location_geojson["type"],
-                coordinates=location_geojson["coordinates"]
+                coordinates=location_geojson["coordinates"],
             ),
-            phone=updated_item.delivery_point.phone,
-            mobile=updated_item.delivery_point.mobile,
-            email=updated_item.delivery_point.email,
-            schedule=updated_item.delivery_point.schedule,
-            is_active=updated_item.delivery_point.is_active,
         ),
     )
 
@@ -498,23 +456,12 @@ async def find_points_in_radius(
 
         results.append(
             DeliveryPointInRadiusResponse(
-                delivery_point=DeliveryPointResponse(
-                    id=delivery_point.id,
-                    name=delivery_point.name,
-                    type=delivery_point.type,
-                    title=delivery_point.title,
-                    address=delivery_point.address,
-                    address_comment=delivery_point.address_comment,
-                    landmark=delivery_point.landmark,
-                    location=GeoJSONPoint(
+                delivery_point=build_delivery_point_response(
+                    delivery_point,
+                    GeoJSONPoint(
                         type=location_geojson["type"],
-                        coordinates=location_geojson["coordinates"]
+                        coordinates=location_geojson["coordinates"],
                     ),
-                    phone=delivery_point.phone,
-                    mobile=delivery_point.mobile,
-                    email=delivery_point.email,
-                    schedule=delivery_point.schedule,
-                    is_active=delivery_point.is_active,
                 ),
                 distance_meters=round(distance, 2),
             )

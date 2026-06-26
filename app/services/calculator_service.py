@@ -50,7 +50,8 @@ class CalculatorService:
         """
         result = await self.db.execute(
             select(DistributionCenter).where(
-                DistributionCenter.is_active == True  # noqa: E712
+                DistributionCenter.is_active == True,  # noqa: E712
+                DistributionCenter.region_id == region_id,
             )
         )
         distribution_centers = result.scalars().all()

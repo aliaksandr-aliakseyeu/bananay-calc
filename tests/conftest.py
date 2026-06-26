@@ -24,8 +24,8 @@ def fake_countries():
     Returns list of Country objects with test data.
     """
     return [
-        Country(id=1, name="Беларусь", code="BY"),
-        Country(id=2, name="Россия", code="RU"),
+        Country(id=1, name="Belarus", code="BY", name_i18n={"ru": "Беларусь", "en": "Belarus", "ka": "ბელარუსი"}),
+        Country(id=2, name="Russia", code="RU", name_i18n={"ru": "Россия", "en": "Russia", "ka": "რუსეთი"}),
     ]
 
 
@@ -36,4 +36,9 @@ def fake_country():
 
     Returns single Country object with test data.
     """
-    return Country(id=1, name="Россия", code="RU")
+    return Country(
+        id=1,
+        name="Russia",
+        code="RU",
+        name_i18n={"ru": "Россия", "en": "Russia", "ka": "რუსეთი"},
+    )

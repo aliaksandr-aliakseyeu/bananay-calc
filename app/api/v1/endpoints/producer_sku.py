@@ -15,15 +15,28 @@ from app.schemas.producer_sku import (ProducerSKUCreate,
                                       ProducerSKUUpdate)
 from app.services.excel_import_service import (ExcelImportError,
                                                ExcelImportService)
+from app.services.reference_data_serializers import (
+    add_reference_labels_to_lookup,
+    to_producer_sku_detail_response,
+)
 from app.utils.text_utils import normalize_name
 
 router = APIRouter(prefix="/producer/skus", tags=["Producer SKU"])
+
+SupportedLang = Annotated[
+    str,
+    Query(
+        description="Response language for nested reference data (en, ka, ru).",
+        pattern="^(en|ka|ru)$",
+    ),
+]
 
 
 @router.get("", response_model=ProducerSKUPaginatedResponse)
 async def get_producer_skus(
     current_user: Annotated[User, Depends(get_current_active_producer)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    lang: SupportedLang = "en",
     is_active: bool | None = Query(None, description="Filter by active status"),
     product_category_id: int | None = Query(None, description="Filter by product category"),
     temperature_mode_id: int | None = Query(None, description="Filter by temperature mode"),
@@ -70,7 +83,7 @@ async def get_producer_skus(
     skus = items_result.scalars().all()
 
     return ProducerSKUPaginatedResponse(
-        items=[ProducerSKUDetailResponse.model_validate(sku) for sku in skus],
+        items=[to_producer_sku_detail_response(sku, lang) for sku in skus],
         total=total,
         limit=limit,
         offset=offset,
@@ -82,6 +95,7 @@ async def get_producer_sku(
     sku_id: int,
     current_user: Annotated[User, Depends(get_current_active_producer)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    lang: SupportedLang = "en",
 ) -> ProducerSKUDetailResponse:
     """
     Get detailed information about a specific SKU.
@@ -107,7 +121,7 @@ async def get_producer_sku(
 
     await db.refresh(sku, ["product_category", "temperature_mode"])
 
-    return ProducerSKUDetailResponse.model_validate(sku)
+    return to_producer_sku_detail_response(sku, lang)
 
 
 @router.post("", response_model=ProducerSKUDetailResponse, status_code=status.HTTP_201_CREATED)
@@ -115,6 +129,7 @@ async def create_producer_sku(
     data: ProducerSKUCreate,
     current_user: Annotated[User, Depends(get_current_active_producer)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    lang: SupportedLang = "en",
 ) -> ProducerSKUDetailResponse:
     """
     Create a new SKU.
@@ -147,7 +162,7 @@ async def create_producer_sku(
     await db.commit()
     await db.refresh(sku, ["product_category", "temperature_mode"])
 
-    return ProducerSKUDetailResponse.model_validate(sku)
+    return to_producer_sku_detail_response(sku, lang)
 
 
 @router.patch("/{sku_id}", response_model=ProducerSKUDetailResponse)
@@ -156,6 +171,7 @@ async def update_producer_sku(
     data: ProducerSKUUpdate,
     current_user: Annotated[User, Depends(get_current_active_producer)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    lang: SupportedLang = "en",
 ) -> ProducerSKUDetailResponse:
     """
     Update an existing SKU.
@@ -204,10 +220,7 @@ async def update_producer_sku(
     await db.refresh(sku)
     await db.refresh(sku, ["product_category", "temperature_mode"])
 
-    return ProducerSKUDetailResponse.model_validate(sku)
-
-
-@router.delete("/{sku_id}", status_code=status.HTTP_204_NO_CONTENT)
+    return to_producer_sku_detail_response(sku, lang)
 async def delete_producer_sku(
     sku_id: int,
     current_user: Annotated[User, Depends(get_current_active_producer)],
@@ -300,25 +313,29 @@ async def import_skus_from_excel(
 
         category_lookup: dict[str, int] = {}
         category_ids: set[int] = set()
-        for c in categories:
-            category_ids.add(c.id)
-            if c.name:
-                for cand in _candidates_for_lookup(c.name):
-                    category_lookup[cand] = c.id
-            if getattr(c, "slug", None):
-                for cand in _candidates_for_lookup(c.slug):
-                    category_lookup[cand] = c.id
+        for category in categories:
+            category_ids.add(category.id)
+            add_reference_labels_to_lookup(
+                category_lookup,
+                category.id,
+                name_i18n=category.name_i18n,
+                legacy_name=category.name,
+                slug=category.slug,
+                normalize=normalize_name,
+            )
 
         temperature_lookup: dict[str, int] = {}
         temperature_ids: set[int] = set()
-        for tm in temperature_modes:
-            temperature_ids.add(tm.id)
-            if tm.name:
-                for cand in _candidates_for_lookup(tm.name):
-                    temperature_lookup[cand] = tm.id
-            if getattr(tm, "slug", None):
-                for cand in _candidates_for_lookup(tm.slug):
-                    temperature_lookup[cand] = tm.id
+        for mode in temperature_modes:
+            temperature_ids.add(mode.id)
+            add_reference_labels_to_lookup(
+                temperature_lookup,
+                mode.id,
+                name_i18n=mode.name_i18n,
+                legacy_name=mode.name,
+                slug=mode.slug,
+                normalize=normalize_name,
+            )
 
         reference_errors: list[dict] = []
         resolved_skus_data: list[dict] = []

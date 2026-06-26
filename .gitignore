@@ -50,3 +50,7 @@ Thumbs.db
 ~$*.xlsx
 ~$*.xls
 
+# Import scripts cache/output
+scripts/.cache/
+scripts/output/
+

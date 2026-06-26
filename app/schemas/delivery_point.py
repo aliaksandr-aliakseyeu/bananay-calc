@@ -1,6 +1,8 @@
 """Delivery point schemas."""
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.i18n import I18nStrings
+
 
 class BoundingBox(BaseModel):
     """Bounding box for filtering by coordinates."""
@@ -106,7 +108,8 @@ class DeliveryPointResponse(BaseModel):
     phone: str | None = Field(None, description="Phone number(s)")
     mobile: str | None = Field(None, description="Mobile number(s)")
     email: str | None = Field(None, description="Email(s)")
-    schedule: str | None = Field(None, description="Working schedule")
+    schedule: str | None = Field(None, description="Resolved working schedule for requested language")
+    schedule_i18n: I18nStrings | None = Field(None, description="All localized schedules")
     is_active: bool = Field(..., description="Is delivery point active")
 
     model_config = ConfigDict(from_attributes=True, json_schema_extra={
@@ -125,7 +128,12 @@ class DeliveryPointResponse(BaseModel):
             "phone": "+7 (862) 123-45-67",
             "mobile": "+7 (999) 123-45-67",
             "email": "shop@example.com",
-            "schedule": "Пн-Вс: 08:00-22:00",
+            "schedule": "Mon-Sun: 08:00-22:00",
+            "schedule_i18n": {
+                "en": "Mon-Sun: 08:00-22:00",
+                "ka": "ორშ-კვი: 08:00-22:00",
+                "ru": "Пн-Вс: 08:00-22:00",
+            },
             "is_active": True
         }
     })
@@ -156,7 +164,12 @@ class DeliveryPointSearchResponse(BaseModel):
                     "phone": "+7 (862) 123-45-67",
                     "mobile": "+7 (999) 123-45-67",
                     "email": "shop@example.com",
-                    "schedule": "Пн-Вс: 08:00-22:00",
+                    "schedule": "Mon-Sun: 08:00-22:00",
+            "schedule_i18n": {
+                "en": "Mon-Sun: 08:00-22:00",
+                "ka": "ორშ-კვი: 08:00-22:00",
+                "ru": "Пн-Вс: 08:00-22:00",
+            },
                     "is_active": True
                 }
             ]
@@ -181,7 +194,8 @@ class DeliveryPointCreate(BaseModel):
     phone: str | None = Field(None, description="Phone number(s)")
     mobile: str | None = Field(None, description="Mobile number(s)")
     email: str | None = Field(None, description="Email(s)")
-    schedule: str | None = Field(None, description="Working schedule")
+    schedule: str | None = Field(None, description="Legacy schedule text (auto-translated if schedule_i18n omitted)")
+    schedule_i18n: I18nStrings | None = Field(None, description="Localized working schedules")
     is_active: bool = Field(True, description="Is delivery point active")
     tag_ids: list[int] = Field(default_factory=list, description="Tag IDs to assign")
 
@@ -198,7 +212,11 @@ class DeliveryPointCreate(BaseModel):
             },
             "phone": "+7 (999) 123-45-67",
             "email": "pvz@example.com",
-            "schedule": "Пн-Вс: 09:00-21:00",
+            "schedule": "Mon-Sun: 09:00-21:00",
+            "schedule_i18n": {
+                "en": "Mon-Sun: 09:00-21:00",
+                "ka": "ორშ-კვი: 09:00-21:00",
+            },
             "is_active": True,
             "tag_ids": [1, 2]
         }
@@ -222,7 +240,8 @@ class DeliveryPointUpdate(BaseModel):
     phone: str | None = Field(None, description="Phone number(s)")
     mobile: str | None = Field(None, description="Mobile number(s)")
     email: str | None = Field(None, description="Email(s)")
-    schedule: str | None = Field(None, description="Working schedule")
+    schedule: str | None = Field(None, description="Legacy schedule text (auto-translated if schedule_i18n omitted)")
+    schedule_i18n: I18nStrings | None = Field(None, description="Localized working schedules")
     is_active: bool | None = Field(None, description="Is delivery point active")
     tag_ids: list[int] | None = Field(None, description="Tag IDs to assign (replaces existing)")
 
@@ -254,6 +273,7 @@ class DeliveryPointDetailResponse(BaseModel):
     mobile: str | None = None
     email: str | None = None
     schedule: str | None = None
+    schedule_i18n: I18nStrings | None = None
     is_active: bool
     tag_ids: list[int] = Field(default_factory=list, description="Assigned tag IDs")
 

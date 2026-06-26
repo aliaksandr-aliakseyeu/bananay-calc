@@ -14,11 +14,14 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    event,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.utils.i18n_fields import sync_legacy_text_from_i18n
 
 if TYPE_CHECKING:
     from app.db.models.category import Category, Subcategory, Tag
@@ -88,7 +91,16 @@ class DeliveryPoint(Base):
         Text, nullable=True, comment="May contain multiple emails separated by comma"
     )
 
-    schedule: Mapped[str | None] = mapped_column(Text, nullable=True)
+    schedule: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Legacy display schedule (synced from English translation)",
+    )
+    schedule_i18n: Mapped[dict[str, str] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="Localized working hours (en, ka, ru)",
+    )
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -106,5 +118,23 @@ class DeliveryPoint(Base):
         "Tag", secondary=delivery_point_tags, lazy="selectin"
     )
 
+    def sync_legacy_fields(self) -> None:
+        """Keep legacy schedule column aligned with English translations."""
+        if self.schedule_i18n:
+            self.schedule = (
+                sync_legacy_text_from_i18n(self.schedule_i18n, fallback=self.schedule)
+                or self.schedule
+            )
+
     def __repr__(self) -> str:
         return f"<DeliveryPoint(id={self.id}, name='{self.name}')>"
+
+
+@event.listens_for(DeliveryPoint, "before_insert")
+@event.listens_for(DeliveryPoint, "before_update")
+def _sync_delivery_point_legacy_fields(
+    _mapper: object,
+    _connection: object,
+    target: DeliveryPoint,
+) -> None:
+    target.sync_legacy_fields()

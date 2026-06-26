@@ -27,6 +27,7 @@ from app.schemas.delivery_point_app import (DeliveryPointDeliveryItem,
 from app.schemas.delivery_list import DeliveryPointInRadiusResponse
 from app.schemas.delivery_point import DeliveryPointResponse, GeoJSONPoint
 from app.services.delivery_list_service import DeliveryListService
+from app.services.delivery_point_serializers import build_delivery_point_response
 
 router = APIRouter(prefix="/point", tags=["Delivery Point App"])
 
@@ -212,23 +213,12 @@ async def find_points_in_radius_for_tracking(
         location_geojson = _location_to_geojson(delivery_point.location)
         results.append(
             DeliveryPointInRadiusResponse(
-                delivery_point=DeliveryPointResponse(
-                    id=delivery_point.id,
-                    name=delivery_point.name,
-                    type=delivery_point.type,
-                    title=delivery_point.title,
-                    address=delivery_point.address,
-                    address_comment=delivery_point.address_comment,
-                    landmark=delivery_point.landmark,
-                    location=GeoJSONPoint(
+                delivery_point=build_delivery_point_response(
+                    delivery_point,
+                    GeoJSONPoint(
                         type=location_geojson["type"],
                         coordinates=location_geojson["coordinates"],
                     ),
-                    phone=delivery_point.phone,
-                    mobile=delivery_point.mobile,
-                    email=delivery_point.email,
-                    schedule=delivery_point.schedule,
-                    is_active=delivery_point.is_active,
                 ),
                 distance_meters=round(distance, 2),
             )
